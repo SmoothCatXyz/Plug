@@ -1397,7 +1397,10 @@
 
 .workspace-doc__body {
   min-height: 0;
-  overflow: hidden;
+  /* Bounded grid row; scroll long documents instead of clipping them. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .workspace-doc__loading {
