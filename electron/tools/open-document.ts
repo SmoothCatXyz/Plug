@@ -53,7 +53,7 @@ export const openDocumentTool: AgentTool<OpenDocumentInput> = {
 
     const title = await firstTitle(projectRoot, target);
     return {
-      summary: `已打开《${title}》(${target})。`,
+      summary: `已打开《${title}》。`,
       output: { documentPath: target, title, openInPanel: true }
     };
   }

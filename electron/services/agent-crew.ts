@@ -6,6 +6,8 @@ import { resolveToolProviderSecret } from "./config-service";
 import { createProviderFetch } from "./network-service";
 import { listAgentToolDefinitions, invokeAgentTool } from "./agent-service";
 import { withPersona } from "./persona";
+import { openDocumentTool } from "../tools/open-document";
+import { writeDocumentTool } from "../tools/write-document";
 
 type ProviderSecret = Awaited<ReturnType<typeof resolveToolProviderSecret>>;
 
@@ -227,8 +229,43 @@ export async function createOrchestratorTools(input: CreateOrchestratorToolsInpu
       execute: async ({ task }) => {
         return runSpecialist("computer", task, ["shell"], input);
       }
-    })
+    }),
+
+    // Direct single-step skills — called by the orchestrator itself, NOT routed
+    // through a specialist sub-agent. Delegating these adds a whole extra model
+    // round-trip (~15s) for what is a single instant action, so they live here.
+    write_document: directOrchestratorTool(writeDocumentTool, input),
+    open_document: directOrchestratorTool(openDocumentTool, input)
   };
+}
+
+// Wrap a tool so the orchestrator can invoke it directly (no specialist agent).
+function directOrchestratorTool(
+  definition: { name: string; label: string; description: string; parameters: z.ZodTypeAny },
+  input: CreateOrchestratorToolsInput
+) {
+  return aiTool({
+    title: definition.label,
+    description: definition.description,
+    inputSchema: definition.parameters,
+    execute: async (toolInput: unknown, executionOptions) => {
+      const result = await invokeAgentTool({
+        invocationId: `${input.streamId}:direct-${executionOptions.toolCallId}`,
+        projectId: input.projectId,
+        mode: input.mode,
+        name: definition.name,
+        input: toolInput,
+        emit: input.emitTool
+      });
+      return {
+        status: result.status,
+        toolName: result.toolName,
+        durationMs: result.durationMs,
+        summary: result.summary,
+        error: result.error
+      };
+    }
+  });
 }
 
 function clipForModel(value: unknown): unknown {

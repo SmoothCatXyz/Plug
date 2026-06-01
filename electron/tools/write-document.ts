@@ -69,8 +69,9 @@ export const writeDocumentTool: AgentTool<WriteDocumentInput> = {
     // (ai-service also runs this post-turn for any written doc; it's idempotent.)
     await indexProjectDocument(projectRoot, writtenPath);
 
+    const where = section.id === "knowledge" ? "知识库" : section.id === "deliverables" ? "交付物" : section.label;
     return {
-      summary: `已写入并索引《${input.title.trim()}》(${writtenPath})。`,
+      summary: `已写好《${input.title.trim()}》,放进${where}并打开了。`,
       output: {
         documentPath: writtenPath,
         title: input.title.trim(),

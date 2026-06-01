@@ -28,6 +28,8 @@ import { streamConversationalReply } from "./conversation-service";
 import { PLUG_PERSONA, withPersona } from "./persona";
 import { createTurnLog } from "./debug-log";
 import { indexProjectDocument } from "../tools/document-index";
+import { readProjectManifest } from "../tools/project-files";
+import { resolveDocumentOpenIntent } from "./document-intent";
 import { toLanguageModel as toModel, MINIMAL_REASONING, type ProviderSecret as PS } from "./provider-utils";
 
 type OpenAiChatCompletionResponse = {
@@ -174,6 +176,34 @@ export async function streamChatResponse(
     // execute mode. Greetings short-circuit to chat inside the classifier.
     const turn = createTurnLog(input.streamId, `▶ ${JSON.stringify(input.content)} (mode=${input.agentMode})`);
 
+    // Fast path: a plain "open <doc>" command resolves to a path deterministically
+    // (no model). Skip classify + context load + orchestrator — a ~7s pipeline for
+    // what is a local file open — and just reveal the document.
+    const fastOpen = await resolveFastDocumentOpen(input.content, input.projectId);
+    if (fastOpen) {
+      const endOpen = turn.phase("fast-open");
+      const result = await invokeAgentTool({
+        invocationId: `${input.streamId}:fast-open`,
+        projectId: input.projectId,
+        mode: input.agentMode,
+        name: "open_document",
+        input: fastOpen.kind === "path" ? { path: fastOpen.path } : {},
+        emit: emitTrackedTool
+      });
+      if (result.status !== "error") {
+        const reply = result.summary || "已打开。";
+        emit({ streamId: input.streamId, type: "delta", messageId: assistantMessage.id, delta: reply });
+        const docPath = (result.output as { documentPath?: string } | undefined)?.documentPath;
+        if (docPath) {
+          emit({ streamId: input.streamId, type: "open-document", path: docPath });
+        }
+        endOpen(docPath ?? "");
+        turn.log("✓ DONE (fast-path)");
+        return completeAssistantMessage(input, userSnapshot, assistantMessage, reply, emit, recordedToolEvents);
+      }
+      endOpen("miss -> full pipeline");
+    }
+
     const recentHistory = userSnapshot.session.messages
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
@@ -256,7 +286,12 @@ export async function streamChatResponse(
               }
             }
           }
-        : {}),
+        : {
+            // Tool orchestration needs *some* planning but not deep chains of
+            // thought — "low" effort keeps multi-step routing while cutting the
+            // per-step first-token latency (the bulk of a simple action's time).
+            providerOptions: { openaiCompatible: { reasoningEffort: "low" } }
+          }),
       onError: (event) => {
         providerStreamError = event.error;
       }
@@ -332,13 +367,20 @@ export async function streamChatResponse(
     // there's nothing to pad with). Otherwise the model's composed text is the
     // deliverable; surface the buffered text as-is.
     const actionSummaries = collectActionSummaries(recordedToolEvents);
-    if (actionSummaries.length > 0) {
+    if (actionSummaries.length === 1 && SELF_DESCRIBING_TOOLS.has(actionSummaries[0].toolName)) {
+      // Sole action by a self-describing tool: its summary IS the reply — skip
+      // the confirmation model call entirely (saves a full round-trip on the
+      // common "open/write a document" path).
+      content = actionSummaries[0].message;
+      turn.log(`confirmation skipped (self-describing: ${actionSummaries[0].toolName})`);
+      emit({ streamId: input.streamId, type: "delta", messageId: assistantMessage.id, delta: content });
+    } else if (actionSummaries.length > 0) {
       const endConfirm = turn.phase("confirmation");
       content = await streamActionConfirmation({
         streamId: input.streamId,
         messageId: assistantMessage.id,
         userRequest: input.content,
-        actionSummaries,
+        actionSummaries: actionSummaries.map((entry) => entry.message),
         providerSecret,
         emit
       });
@@ -514,8 +556,8 @@ function buildChatPromptFromContext(
         ? "当前模式:Execute。这通常意味着有具体的活儿要干——用你的专职 agent(delegate_research、delegate_file_ops、delegate_memory、delegate_browser)把任务从头做到尾。但先看清这句话是不是真需要动工具:如果只是聊天或拿主意,就直接以搭档身份回应,别为了用工具而用工具。"
         : "当前模式:Auto。先判断这句话到底需不需要动工具或调研:需要,就直接委派 specialist 把它办完,不啰嗦;如果只是聊天、征求意见、个人决定,就直接以搭档身份回一句,别套任务流程、别铺方案菜单。",
     "完成任务后怎么回复:就用一句话确认结果(例:用户说「打开百度网页」,你做完只回「已打开百度首页」)。不要罗列 URL、标题、文件路径这些执行细节;不要主动追问「要不要做下一步/要不要发截图」——用户想要更多,自己会问。只有当任务本身就是要产出一段内容(比如「写一段文案」),才把那段内容给出来。",
-    "特殊技能 write_document:做完调研、或写好一份文档时,用 write_document 把成果【直接】写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables)。它会自动建好 .md 文件、刷新该区索引、并在侧栏打开给用户看。研究结果和成稿一律用 write_document(通过 delegate_file_ops),不要用 create_file(那个要审批),也不要只把内容贴在聊天里。",
-    "特殊技能 open_document:用户让你「打开/查看某个文档」时,必须真的调用 open_document(通过 delegate_file_ops),不能嘴上说「已打开」却不调用。指定路径就传 path;用户没指明具体哪篇(如「打开文档」「打开那篇调研」)就不传 path,它会自动打开最近写的那篇。",
+    "特殊技能 write_document:做完调研、或写好一份文档时,【直接调用 write_document】(它是你的直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables)。它会自动建好 .md 文件、刷新该区索引、并在侧栏打开。研究结果和成稿一律用它,不要用 create_file(那个要审批),也不要只把内容贴在聊天里。",
+    "特殊技能 open_document:用户让你「打开/查看某个文档」时,【直接调用 open_document】(直连工具,不要经 delegate_file_ops),不能嘴上说「已打开」却不调用。指定路径就传 path(如主页传「00-home.md」);用户没指明具体哪篇(如「打开文档」「打开那篇调研」)就不传 path,它会自动打开最近写的那篇。",
     `Project: ${workspace.manifest.name}`,
     `Current document: ${currentDocument.path}`,
     relaySection,
@@ -963,18 +1005,44 @@ function isActionTool(name: string): boolean {
   return ACTION_TOOL_NAMES.has(name) || name.startsWith("computer_");
 }
 
-// Summaries of the side-effecting actions completed this turn (chronological,
-// de-duplicated). Empty when the turn was synthesis/Q&A rather than an action.
-function collectActionSummaries(events: ToolStreamEvent[]): string[] {
+// Tools whose own success summary is already a clean, user-ready confirmation in
+// the user's language. When such a tool is the sole action of a turn, we skip
+// the confirmation model call entirely and surface its summary verbatim.
+const SELF_DESCRIBING_TOOLS = new Set(["open_document", "write_document"]);
+
+// Side-effecting actions completed this turn (chronological, de-duplicated).
+// Empty when the turn was synthesis/Q&A rather than an action.
+function collectActionSummaries(events: ToolStreamEvent[]): Array<{ toolName: string; message: string }> {
   const seen = new Set<string>();
-  const summaries: string[] = [];
+  const summaries: Array<{ toolName: string; message: string }> = [];
   for (const event of [...events].reverse()) {
     if (event.phase === "success" && isActionTool(event.toolName) && event.message && !seen.has(event.message)) {
       seen.add(event.message);
-      summaries.push(event.message);
+      summaries.push({ toolName: event.toolName, message: event.message });
     }
   }
   return summaries;
+}
+
+// Resolve a plain "open <doc>" command to a target without a model call. Reads
+// the manifest only when the message already looks like an open command, so it
+// adds no cost to other turns. Returns null -> fall through to the full pipeline.
+async function resolveFastDocumentOpen(
+  content: string,
+  projectId: string
+): Promise<{ kind: "path"; path: string } | { kind: "latest" } | null> {
+  // Cheap pre-check: only touch the filesystem when the message looks like an
+  // open command at all.
+  if (!/(打开|查看|显示|看一下|看看|开一下|调出|open|show|view|reveal)/i.test(content)) {
+    return null;
+  }
+  try {
+    const project = await getProjectById(projectId);
+    const manifest = await readProjectManifest(project.path);
+    return resolveDocumentOpenIntent(content, manifest.sections);
+  } catch {
+    return null;
+  }
 }
 
 // The most recent project document this turn wants surfaced — written (create_file
