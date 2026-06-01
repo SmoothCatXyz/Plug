@@ -1,0 +1,8 @@
+{
+  "id": "product-dev",
+  "label": "Product Development",
+  "description": "PRD, design, code references, knowledge, and deliverables for product work.",
+  "icon": "package",
+  "defaultModel": "deepseek-chat",
+  "sections": ["home", "purpose", "prd", "design", "code", "knowledge", "deliverables"]
+}

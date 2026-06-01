@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "name": "{{projectName}}",
+  "templateId": "product-dev",
+  "createdAt": "{{createdAt}}",
+  "updatedAt": "{{updatedAt}}",
+  "model": {
+    "default": "{{defaultModel}}",
+    "planning": "{{planningModel}}"
+  },
+  "code": {
+    "type": "git",
+    "url": "{{gitUrl}}",
+    "branch": "{{gitBranch}}"
+  },
+  "sections": [
+    {
+      "id": "home",
+      "label": "主页",
+      "path": "00-home.md",
+      "type": "file",
+      "aiWrite": "auto",
+      "icon": "home"
+    },
+    {
+      "id": "purpose",
+      "label": "项目目的",
+      "path": "01-purpose.md",
+      "type": "file",
+      "aiWrite": "auto",
+      "icon": "target"
+    },
+    {
+      "id": "prd",
+      "label": "PRD",
+      "path": "02-prd/",
+      "type": "folder",
+      "aiWrite": "confirm",
+      "icon": "file-text"
+    },
+    {
+      "id": "design",
+      "label": "设计",
+      "path": "03-design/",
+      "type": "folder",
+      "aiWrite": "confirm",
+      "icon": "palette"
+    },
+    {
+      "id": "code",
+      "label": "代码",
+      "path": "04-code/",
+      "type": "git",
+      "aiWrite": "confirm",
+      "icon": "git-branch"
+    },
+    {
+      "id": "knowledge",
+      "label": "知识仓库",
+      "path": "05-knowledge/",
+      "type": "folder",
+      "aiWrite": "auto",
+      "icon": "book"
+    },
+    {
+      "id": "deliverables",
+      "label": "交付物",
+      "path": "06-deliverables/",
+      "type": "folder",
+      "aiWrite": "confirm",
+      "icon": "package"
+    }
+  ]
+}

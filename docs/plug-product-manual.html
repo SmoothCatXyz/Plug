@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plug 产品说明书</title>
+    <style>
+      :root {
+        --bg: #05080d;
+        --panel: #0a0e14;
+        --panel-2: #11161f;
+        --line: #223047;
+        --cyan: #00d9ff;
+        --cyan-soft: rgba(0, 217, 255, 0.16);
+        --green: #10f4b1;
+        --amber: #f59e0b;
+        --text: #e5f2ff;
+        --muted: #7b8ea3;
+        --dim: #4a5868;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(rgba(0, 217, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px),
+          radial-gradient(circle at 78% 12%, rgba(0, 217, 255, 0.1), transparent 24rem),
+          var(--bg);
+        background-size: 32px 32px, 32px 32px, auto, auto;
+        color: var(--text);
+        font-family: "DIN Alternate", "SF Mono", Menlo, Consolas, monospace;
+        line-height: 1.65;
+      }
+
+      a {
+        color: var(--cyan);
+      }
+
+      .manual {
+        width: min(1180px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+
+      .hero {
+        border: 1px solid var(--cyan);
+        background: rgba(10, 14, 20, 0.88);
+        box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.12), 0 0 36px rgba(0, 217, 255, 0.12);
+        padding: 34px 36px 30px;
+      }
+
+      .hero__meta,
+      .section__eyebrow,
+      th {
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        margin-top: 12px;
+        font-size: clamp(42px, 6vw, 76px);
+        font-weight: 700;
+      }
+
+      .hero p {
+        max-width: 860px;
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .status-card,
+      .section,
+      .shot,
+      .callout {
+        border: 1px solid var(--line);
+        background: rgba(17, 22, 31, 0.86);
+      }
+
+      .status-card {
+        min-height: 110px;
+        padding: 18px;
+      }
+
+      .status-card strong {
+        display: block;
+        margin-top: 14px;
+        font-size: 22px;
+      }
+
+      .status-card span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .section {
+        margin-top: 28px;
+        padding: 28px;
+      }
+
+      .section h2 {
+        margin-top: 8px;
+        font-size: 28px;
+      }
+
+      .section h3 {
+        margin-top: 24px;
+        color: var(--text);
+        font-size: 18px;
+      }
+
+      .section p,
+      .section li {
+        color: var(--muted);
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .steps li {
+        border-left: 2px solid var(--cyan);
+        background: rgba(0, 217, 255, 0.055);
+        padding: 14px 16px;
+      }
+
+      code {
+        border: 1px solid var(--line);
+        background: rgba(5, 8, 13, 0.72);
+        color: var(--text);
+        padding: 2px 6px;
+      }
+
+      pre {
+        overflow: auto;
+        border: 1px solid var(--line);
+        background: rgba(5, 8, 13, 0.78);
+        color: var(--text);
+        padding: 16px;
+      }
+
+      .shots {
+        display: grid;
+        gap: 24px;
+        margin-top: 18px;
+      }
+
+      .shot {
+        overflow: hidden;
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: var(--bg);
+      }
+
+      .shot figcaption {
+        border-top: 1px solid var(--line);
+        padding: 14px 16px;
+        color: var(--muted);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 12px 14px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      td {
+        color: var(--muted);
+      }
+
+      .callout {
+        margin-top: 18px;
+        padding: 18px;
+        border-color: var(--amber);
+        background: rgba(245, 158, 11, 0.07);
+      }
+
+      .callout strong {
+        color: var(--amber);
+      }
+
+      .ok {
+        color: var(--green);
+      }
+
+      .footer {
+        margin-top: 28px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+
+      @media (max-width: 860px) {
+        .manual {
+          width: min(100vw - 24px, 680px);
+          padding-top: 20px;
+        }
+
+        .hero,
+        .section {
+          padding: 20px;
+        }
+
+        .status-grid,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="manual">
+      <header class="hero">
+        <div class="hero__meta">Plug Mission Registry / Local First</div>
+        <h1>Plug 产品说明书</h1>
+        <p>
+          Plug 是一个本地优先的桌面 AI 工作台，用项目目录作为任务现场：创建项目、维护文档、执行对话、追踪工具调用，并通过审批机制控制 AI 写入。
+        </p>
+        <div class="status-grid" aria-label="当前状态">
+          <div class="status-card">
+            <span>Runtime</span>
+            <strong class="ok">Electron</strong>
+          </div>
+          <div class="status-card">
+            <span>IPC</span>
+            <strong class="ok">Ready</strong>
+          </div>
+          <div class="status-card">
+            <span>Mode</span>
+            <strong>Plan / Execute</strong>
+          </div>
+          <div class="status-card">
+            <span>Version</span>
+            <strong>42.2.0</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="section">
+        <div class="section__eyebrow">Start Here</div>
+        <h2>现在怎么测试</h2>
+        <ol class="steps">
+          <li>在项目根目录运行 <code>npm run dev</code>。</li>
+          <li>使用自动弹出的 Electron 桌面窗口测试，不要使用浏览器里的 <code>localhost:5173</code> 页面。</li>
+          <li>首次使用可以点 <code>New Project</code> 创建项目，或点已有项目进入 Workspace。</li>
+        </ol>
+        <div class="callout">
+          <strong>注意：</strong>
+          浏览器预览页没有 Electron preload，因此无法创建项目、读写文件或调用聊天 IPC。真实测试入口必须是 Electron 桌面窗口。
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__eyebrow">Screenshots</div>
+        <h2>界面截图</h2>
+        <div class="shots">
+          <figure class="shot">
+            <img src="manual-assets/plug-launcher.png" alt="Plug launcher mission registry screen" />
+            <figcaption>
+              Launcher：项目注册表、本地项目入口、运行状态、快捷键提示。这里可以创建新项目、登记现有目录、刷新项目列表、打开设置和命令面板。
+            </figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="manual-assets/plug-workspace.png" alt="Plug workspace with sections chat and document viewer" />
+            <figcaption>
+              Workspace：左侧是项目章节和工具状态，中间是对话/任务执行区，右侧是 Markdown 文档查看与编辑区。Plan/Execute 模式控制 AI 可用工具范围。
+            </figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="manual-assets/plug-settings.png" alt="Plug settings provider network and tool model screen" />
+            <figcaption>
+              Settings：配置模型供应商、API key、代理、工具模型和 MCP server。供应商测试结果会显示在右侧 Test Bus。
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__eyebrow">Core Flow</div>
+        <h2>核心使用流程</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>阶段</th>
+              <th>操作</th>
+              <th>产物</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>创建项目</td>
+              <td>从 <code>product-dev</code> 模板创建本地项目。</td>
+              <td><code>.plug/manifest.json</code>、项目章节、规则、记忆和会话目录。</td>
+            </tr>
+            <tr>
+              <td>阅读与编辑</td>
+              <td>在右侧文档面板打开 Markdown，切换 View/Edit 后保存。</td>
+              <td>项目目录内的 Markdown 文档，写入被限制在项目根目录内。</td>
+            </tr>
+            <tr>
+              <td>AI 对话</td>
+              <td>在中间会话区输入任务，选择 Plan 或 Execute。</td>
+              <td>会话消息、工具调用事件、待审批改动。</td>
+            </tr>
+            <tr>
+              <td>审批执行</td>
+              <td>对 create/edit/delete/command/MCP confirm 工具进行批准或拒绝。</td>
+              <td>可追踪的审批结果；confirm MCP 工具批准前不会真正调用外部 server。</td>
+            </tr>
+            <tr>
+              <td>扩展能力</td>
+              <td>配置 Prompt Apps、Skills、MCP、Memory、Artifacts baseline。</td>
+              <td>更接近 Alma 的项目化 AI 工作台能力。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section__eyebrow">Keyboard</div>
+        <h2>常用快捷键</h2>
+        <table>
+          <tbody>
+            <tr>
+              <td><code>Cmd/Ctrl + N</code></td>
+              <td>打开新项目向导。</td>
+            </tr>
+            <tr>
+              <td><code>Cmd/Ctrl + O</code></td>
+              <td>登记现有本地项目目录。</td>
+            </tr>
+            <tr>
+              <td><code>Cmd/Ctrl + K</code></td>
+              <td>打开命令面板。</td>
+            </tr>
+            <tr>
+              <td><code>Cmd/Ctrl + ,</code></td>
+              <td>打开设置。</td>
+            </tr>
+            <tr>
+              <td><code>Cmd/Ctrl + R</code></td>
+              <td>刷新项目注册表。</td>
+            </tr>
+            <tr>
+              <td><code>Cmd/Ctrl + T</code></td>
+              <td>在 Workspace 中创建新会话。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section__eyebrow">Verification</div>
+        <h2>本次可测试状态</h2>
+        <p>本说明书生成前已完成以下验证：</p>
+        <pre>npm run typecheck
+PASS mcp stdio tool injection
+npm run build
+PASS agent tool adapter
+PASS no-key chat fallback
+PASS provider failure chat fallback</pre>
+        <p>
+          当前实现已经能创建/登记项目、打开 Workspace、读写 Markdown、运行本地无 key 对话降级、配置模型供应商、管理 Prompt Apps、显示工具事件、配置 MCP server，并对 confirm 级 MCP 工具执行审批保护。
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section__eyebrow">Known Limits</div>
+        <h2>当前限制</h2>
+        <ul>
+          <li>Alma parity 仍未完全完成：Playwright web tools、Chrome relay、完整 Artifacts、向量化 semantic memory、发布打包等还在后续 slice。</li>
+          <li>没有配置供应商 API key 时，Plug 会在对话内给出配置提示；这是可用降级，不是崩溃。</li>
+          <li>MCP 目前是 stdio JSON-RPC baseline；复杂 MCP transport 和更完整的 UI 管理仍可继续加强。</li>
+        </ul>
+      </section>
+
+      <p class="footer">
+        Generated for local testing. Screenshot assets live in <code>docs/manual-assets/</code>.
+      </p>
+    </main>
+  </body>
+</html>

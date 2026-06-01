@@ -1,0 +1,210 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Plug Design Tokens — 机甲座舱风桌面 AI 工作仓\nW3C Design Tokens 格式，可直接导入 Tokens Studio for Figma 或用 Style Dictionary 编译。\n配套文档：Plug-Design-Brief.md",
+  "color": {
+    "$description": "完整色彩系统：深空蓝黑基底 + cyan accent + 严格分工的信号色",
+    "bg": {
+      "void":     { "$value": "#05080D", "$type": "color", "$description": "最深，整个 app 底色" },
+      "panel":    { "$value": "#0A0E14", "$type": "color", "$description": "主要 panel 底色" },
+      "elevated": { "$value": "#11161F", "$type": "color", "$description": "浮层、Mission Panel、modal" },
+      "overlay":  { "$value": "#1A2230", "$type": "color", "$description": "最高层级（dropdown、tooltip）" }
+    },
+    "border": {
+      "subtle":   { "$value": "rgba(255, 255, 255, 0.04)", "$type": "color", "$description": "极弱分隔" },
+      "default":  { "$value": "#1F2937", "$type": "color" },
+      "strong":   { "$value": "#2D3B4F", "$type": "color" },
+      "accent":   { "$value": "#00D9FF", "$type": "color", "$description": "HUD 装饰、激活态" },
+      "glow":     { "$value": "rgba(0, 217, 255, 0.4)", "$type": "color", "$description": "发光边框（聚焦）" }
+    },
+    "accent": {
+      "cyan":     { "$value": "#00D9FF", "$type": "color", "$description": "J.A.R.V.I.S. 蓝 — 主交互、品牌" },
+      "cyan-dim": { "$value": "#0099B8", "$type": "color", "$description": "弱化 cyan，hover/disabled" },
+      "amber":    { "$value": "#F59E0B", "$type": "color", "$description": "等待、AWAITING、需用户决策" },
+      "red":      { "$value": "#FF3B30", "$type": "color", "$description": "错误、危险、EVA 应急" },
+      "red-dim":  { "$value": "#B82D24", "$type": "color" },
+      "green":    { "$value": "#10F4B1", "$type": "color", "$description": "完成、健康、连通" },
+      "violet":   { "$value": "#9D5CFF", "$type": "color", "$description": "Plan 模式、AI 思考中" }
+    },
+    "text": {
+      "primary":    { "$value": "#E5F2FF", "$type": "color", "$description": "主文本（不是纯白，长时阅读舒适）" },
+      "secondary":  { "$value": "#7B8EA3", "$type": "color" },
+      "muted":      { "$value": "#4A5868", "$type": "color" },
+      "hud":        { "$value": "#00D9FF", "$type": "color", "$description": "HUD 标签（全大写 + tracking）" },
+      "on-accent":  { "$value": "#05080D", "$type": "color", "$description": "accent 色背景上的文字" }
+    },
+    "status": {
+      "running": { "$value": "rgba(0, 217, 255, 0.08)", "$type": "color" },
+      "waiting": { "$value": "rgba(245, 158, 11, 0.08)", "$type": "color" },
+      "error":   { "$value": "rgba(255, 59, 48, 0.08)", "$type": "color" },
+      "success": { "$value": "rgba(16, 244, 177, 0.08)", "$type": "color" }
+    }
+  },
+  "typography": {
+    "$description": "字族 / 字号 / 字重 / preset 全套",
+    "font-family": {
+      "cn-ui":      { "$value": "MiSans, HarmonyOS Sans SC, PingFang SC, system-ui, sans-serif", "$type": "fontFamily" },
+      "cn-display": { "$value": "MiSans Heavy, HarmonyOS Sans SC Bold, PingFang SC Semibold, sans-serif", "$type": "fontFamily" },
+      "en-ui":      { "$value": "Inter, SF Pro Text, system-ui, sans-serif", "$type": "fontFamily" },
+      "en-display": { "$value": "Orbitron, Rajdhani, Inter, sans-serif", "$type": "fontFamily", "$description": "科幻几何感，仅 HUD 大标用" },
+      "mono":       { "$value": "JetBrains Mono, SF Mono, Consolas, monospace", "$type": "fontFamily" }
+    },
+    "font-size": {
+      "hud":     { "$value": "10px",  "$type": "dimension", "$description": "HUD 标签，全大写 + letter-spacing 0.1em" },
+      "xs":      { "$value": "11px",  "$type": "dimension" },
+      "sm":      { "$value": "13px",  "$type": "dimension" },
+      "base":    { "$value": "14px",  "$type": "dimension", "$description": "主文本，比常规小 2px 提密度" },
+      "lg":      { "$value": "16px",  "$type": "dimension" },
+      "xl":      { "$value": "20px",  "$type": "dimension", "$description": "区块标题" },
+      "2xl":     { "$value": "28px",  "$type": "dimension", "$description": "项目名 / 页面大标题" },
+      "display": { "$value": "40px",  "$type": "dimension", "$description": "启动页 PLUG 大标" }
+    },
+    "font-weight": {
+      "light":    { "$value": 300, "$type": "fontWeight" },
+      "regular":  { "$value": 400, "$type": "fontWeight" },
+      "medium":   { "$value": 500, "$type": "fontWeight" },
+      "semibold": { "$value": 600, "$type": "fontWeight" },
+      "bold":     { "$value": 700, "$type": "fontWeight" }
+    },
+    "letter-spacing": {
+      "normal":    { "$value": "0",      "$type": "dimension" },
+      "tight":     { "$value": "-0.01em", "$type": "dimension" },
+      "wide":      { "$value": "0.05em", "$type": "dimension" },
+      "wider":     { "$value": "0.1em",  "$type": "dimension", "$description": "HUD 标签" },
+      "widest":    { "$value": "0.2em",  "$type": "dimension", "$description": "启动页 PLUG" }
+    },
+    "preset": {
+      "hud-label": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.mono}",
+          "fontSize":   "{typography.font-size.hud}",
+          "fontWeight": "{typography.font-weight.bold}",
+          "letterSpacing": "{typography.letter-spacing.wider}",
+          "textTransform": "uppercase"
+        }
+      },
+      "section-nav": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.cn-ui}",
+          "fontSize":   "{typography.font-size.sm}",
+          "fontWeight": "{typography.font-weight.medium}"
+        }
+      },
+      "body": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.cn-ui}",
+          "fontSize":   "{typography.font-size.base}",
+          "fontWeight": "{typography.font-weight.regular}",
+          "lineHeight": "1.65"
+        }
+      },
+      "tool-call": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.mono}",
+          "fontSize":   "12px",
+          "fontWeight": "{typography.font-weight.medium}"
+        }
+      },
+      "numeric": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.mono}",
+          "fontSize":   "{typography.font-size.xs}",
+          "fontWeight": "{typography.font-weight.medium}",
+          "fontFeatureSettings": "'tnum' 1, 'zero' 1"
+        }
+      },
+      "project-title": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.en-display}",
+          "fontSize":   "{typography.font-size.base}",
+          "fontWeight": "{typography.font-weight.semibold}",
+          "letterSpacing": "{typography.letter-spacing.wide}"
+        }
+      },
+      "plug-wordmark": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{typography.font-family.en-display}",
+          "fontSize":   "{typography.font-size.display}",
+          "fontWeight": "{typography.font-weight.bold}",
+          "letterSpacing": "{typography.letter-spacing.widest}",
+          "textTransform": "uppercase"
+        }
+      }
+    }
+  },
+  "spacing": {
+    "$description": "4px 基准间距",
+    "1":  { "$value": "4px",  "$type": "dimension" },
+    "2":  { "$value": "8px",  "$type": "dimension" },
+    "3":  { "$value": "12px", "$type": "dimension" },
+    "4":  { "$value": "16px", "$type": "dimension" },
+    "5":  { "$value": "20px", "$type": "dimension" },
+    "6":  { "$value": "24px", "$type": "dimension" },
+    "8":  { "$value": "32px", "$type": "dimension" },
+    "10": { "$value": "40px", "$type": "dimension" },
+    "12": { "$value": "48px", "$type": "dimension" },
+    "16": { "$value": "64px", "$type": "dimension" }
+  },
+  "radius": {
+    "$description": "圆角（机甲不是软糖，最大 6px）",
+    "none": { "$value": "0",    "$type": "dimension" },
+    "sm":   { "$value": "2px",  "$type": "dimension" },
+    "md":   { "$value": "4px",  "$type": "dimension" },
+    "lg":   { "$value": "6px",  "$type": "dimension" }
+  },
+  "border": {
+    "thin":   { "$value": "1px",   "$type": "dimension" },
+    "medium": { "$value": "1.5px", "$type": "dimension", "$description": "HUD 折角" },
+    "thick":  { "$value": "2px",   "$type": "dimension", "$description": "决策弹窗 / focus ring" }
+  },
+  "shadow": {
+    "$description": "机甲风格不用大块阴影；只用 glow + 极少 modal shadow",
+    "glow-cyan":  { "$value": "0 0 12px rgba(0, 217, 255, 0.25)",  "$type": "shadow" },
+    "glow-amber": { "$value": "0 0 12px rgba(245, 158, 11, 0.25)", "$type": "shadow" },
+    "glow-red":   { "$value": "0 0 12px rgba(255, 59, 48, 0.3)",   "$type": "shadow" },
+    "glow-green": { "$value": "0 0 12px rgba(16, 244, 177, 0.25)", "$type": "shadow" },
+    "modal":      { "$value": "0 16px 64px rgba(0, 0, 0, 0.8)",    "$type": "shadow" }
+  },
+  "motion": {
+    "$description": "缓动曲线 + 时长",
+    "easing": {
+      "out":      { "$value": "cubic-bezier(0.16, 1, 0.3, 1)",    "$type": "cubicBezier", "$description": "默认 ease-out, sharp" },
+      "in":       { "$value": "cubic-bezier(0.7, 0, 0.84, 0)",    "$type": "cubicBezier" },
+      "in-out":   { "$value": "cubic-bezier(0.65, 0, 0.35, 1)",   "$type": "cubicBezier" },
+      "spring":   { "$value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "$type": "cubicBezier", "$description": "谨慎使用，机甲不弹跳" },
+      "linear":   { "$value": "linear", "$type": "cubicBezier" }
+    },
+    "duration": {
+      "instant": { "$value": "80ms",   "$type": "duration", "$description": "按钮 click" },
+      "fast":    { "$value": "160ms",  "$type": "duration" },
+      "base":    { "$value": "240ms",  "$type": "duration", "$description": "默认 UI 过渡" },
+      "medium":  { "$value": "400ms",  "$type": "duration", "$description": "面板进出" },
+      "slow":    { "$value": "600ms",  "$type": "duration" },
+      "splash":  { "$value": "1200ms", "$type": "duration", "$description": "启动动画" }
+    }
+  },
+  "layout": {
+    "$description": "关键布局尺寸",
+    "top-bar-height":        { "$value": "48px",  "$type": "dimension" },
+    "bottom-bar-height":     { "$value": "32px",  "$type": "dimension" },
+    "left-nav-width":        { "$value": "220px", "$type": "dimension" },
+    "right-panel-width":     { "$value": "380px", "$type": "dimension" },
+    "right-panel-min":       { "$value": "320px", "$type": "dimension" },
+    "right-panel-max":       { "$value": "560px", "$type": "dimension" },
+    "center-min":            { "$value": "480px", "$type": "dimension" },
+    "input-min-height":      { "$value": "80px",  "$type": "dimension" },
+    "input-max-height":      { "$value": "200px", "$type": "dimension" },
+    "mission-panel-min":     { "$value": "360px", "$type": "dimension" },
+    "modal-width":           { "$value": "480px", "$type": "dimension" },
+    "section-item-height":   { "$value": "32px",  "$type": "dimension" },
+    "tool-call-height":      { "$value": "24px",  "$type": "dimension" },
+    "window-min-width":      { "$value": "1280px", "$type": "dimension" },
+    "window-min-height":     { "$value": "800px",  "$type": "dimension" }
+  }
+}

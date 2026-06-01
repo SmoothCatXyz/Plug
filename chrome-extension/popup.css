@@ -1,0 +1,228 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #05080d;
+  color: #c8d0dc;
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+  min-width: 320px;
+  max-width: 360px;
+}
+
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #1a2333;
+  padding-bottom: 12px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  color: #00d9ff;
+  font-size: 16px;
+}
+
+.logo-text {
+  color: #e8ecf2;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Status row */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.status-dot.connected {
+  background: #00d9ff;
+  box-shadow: 0 0 6px #00d9ff88;
+}
+
+.status-dot.disconnected {
+  background: #4a5568;
+}
+
+.status-label {
+  color: #7a8a9e;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-label.connected {
+  color: #00d9ff;
+}
+
+/* Tab info */
+.tab-info {
+  background: #0d1520;
+  border: 1px solid #1a2333;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tab-info.hidden {
+  display: none;
+}
+
+.tab-info-label {
+  color: #4a5568;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tab-url {
+  color: #7dd3fc;
+  font-size: 11px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+/* Section */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  color: #4a5568;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Token row */
+.token-row {
+  display: flex;
+  gap: 6px;
+}
+
+.token-input {
+  flex: 1;
+  background: #0d1520;
+  border: 1px solid #1a2333;
+  border-radius: 4px;
+  color: #c8d0dc;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.token-input:focus {
+  border-color: #00d9ff44;
+}
+
+.token-input::placeholder {
+  color: #2a3545;
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 7px 12px;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #00d9ff22;
+  border: 1px solid #00d9ff44;
+  color: #00d9ff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #00d9ff33;
+}
+
+.btn-relay {
+  background: #0d1f2d;
+  border: 1px solid #1e3a4f;
+  color: #7dd3fc;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+
+.btn-relay:hover:not(:disabled) {
+  background: #122637;
+  border-color: #00d9ff44;
+  color: #00d9ff;
+}
+
+.btn-relay.active {
+  background: #0d2a1a;
+  border-color: #00d9ff44;
+  color: #34d399;
+}
+
+.btn-relay.active:hover:not(:disabled) {
+  background: #0f3520;
+}
+
+.btn-full {
+  width: 100%;
+  text-align: center;
+}
+
+/* Help link */
+.help-link {
+  color: #2a3f55;
+  font-size: 10px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.help-link:hover {
+  color: #00d9ff;
+}
+
+/* Relay hint */
+.relay-hint {
+  color: #2a3545;
+  font-size: 10px;
+  line-height: 1.5;
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plug Browser Relay</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <span class="logo-icon">&#9697;</span>
+        <span class="logo-text">Plug Browser Relay</span>
+      </div>
+    </div>
+
+    <div class="status-row">
+      <div id="status-dot" class="status-dot disconnected"></div>
+      <span id="status-label" class="status-label">Disconnected</span>
+    </div>
+
+    <div id="tab-info" class="tab-info hidden">
+      <span class="tab-info-label">Active relay tab:</span>
+      <span id="tab-url" class="tab-url"></span>
+    </div>
+
+    <div class="section">
+      <label class="field-label" for="token-input">Relay Token</label>
+      <div class="token-row">
+        <input
+          id="token-input"
+          class="token-input"
+          type="password"
+          placeholder="Paste token from Plug settings..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="save-btn" class="btn btn-primary">Save</button>
+      </div>
+      <a
+        href="https://github.com/plug-app/plug#chrome-relay"
+        target="_blank"
+        class="help-link"
+      >
+        How to find your token
+      </a>
+    </div>
+
+    <div class="section">
+      <button id="relay-btn" class="btn btn-relay btn-full">Enable Relay for This Tab</button>
+      <p id="relay-hint" class="relay-hint">
+        Click to attach the debugger to the current tab and start relaying.
+      </p>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

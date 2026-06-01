@@ -1,0 +1,137 @@
+:root {
+  /* Background layers */
+  --bg-void: #05080d;
+  --bg-panel: #0a0e14;
+  --bg-elevated: #11161f;
+  --bg-overlay: #1a2230;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-default: #1f2937;
+  --border-strong: #2d3b4f;
+  --border-accent: #00d9ff;
+  --border-glow: rgba(0, 217, 255, 0.4);
+
+  /* Functional accents */
+  --accent-cyan: #00d9ff;
+  --accent-cyan-dim: #0099b8;
+  --accent-amber: #f59e0b;
+  --accent-red: #ff3b30;
+  --accent-red-dim: #b82d24;
+  --accent-green: #10f4b1;
+  --accent-violet: #9d5cff;
+
+  /* Text */
+  --text-primary: #e5f2ff;
+  --text-secondary: #7b8ea3;
+  --text-muted: #4a5868;
+  --text-hud: #00d9ff;
+  --text-on-accent: #05080d;
+
+  /* Status backgrounds */
+  --status-running: rgba(0, 217, 255, 0.08);
+  --status-waiting: rgba(245, 158, 11, 0.08);
+  --status-error: rgba(255, 59, 48, 0.08);
+  --status-success: rgba(16, 244, 177, 0.08);
+
+  /* Derived surface effects */
+  --surface-panel-translucent: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  --surface-grid-line: rgba(0, 217, 255, 0.03);
+  --surface-cyan-trace: rgba(0, 217, 255, 0.08);
+  --surface-cyan-trace-strong: rgba(0, 217, 255, 0.16);
+  --surface-amber-trace: rgba(245, 158, 11, 0.14);
+  --surface-red-trace: rgba(255, 59, 48, 0.14);
+
+  /* Glow and shadow */
+  --glow-cyan: 0 0 12px rgba(0, 217, 255, 0.25);
+  --glow-cyan-soft: 0 0 24px rgba(0, 217, 255, 0.08);
+  --glow-amber: 0 0 12px rgba(245, 158, 11, 0.25);
+  --glow-red: 0 0 12px rgba(255, 59, 48, 0.3);
+  --glow-green: 0 0 12px rgba(16, 244, 177, 0.25);
+  --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.8);
+
+  /* Fonts */
+  --font-cn-ui: "MiSans", "HarmonyOS Sans SC", "PingFang SC", system-ui, sans-serif;
+  --font-cn-display: "MiSans Heavy", "HarmonyOS Sans SC Bold", "PingFang SC Semibold", sans-serif;
+  --font-en-ui: "Inter", "SF Pro Text", system-ui, sans-serif;
+  --font-en-display: "Orbitron", "Rajdhani", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --font-default: var(--font-cn-ui);
+  --font-display: var(--font-cn-display);
+
+  /* Font sizes */
+  --text-size-hud: 10px;
+  --text-size-xs: 11px;
+  --text-size-sm: 13px;
+  --text-size-base: 14px;
+  --text-size-lg: 16px;
+  --text-size-xl: 20px;
+  --text-size-2xl: 28px;
+  --text-size-display: 40px;
+
+  /* Font weights */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Letter spacing */
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-hud: 0.1em;
+  --tracking-wordmark: 0.2em;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  /* Border widths */
+  --border-thin: 1px;
+  --border-medium: 1.5px;
+  --border-thick: 2px;
+  --border-double: 3px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-linear: linear;
+  --dur-instant: 80ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-medium: 400ms;
+  --dur-slow: 600ms;
+  --dur-splash: 1200ms;
+
+  /* Layout */
+  --layout-top-bar-height: 48px;
+  --layout-bottom-bar-height: 32px;
+  --layout-left-nav-width: 220px;
+  --layout-right-panel-width: 380px;
+  --layout-right-panel-min: 320px;
+  --layout-right-panel-max: 560px;
+  --layout-center-min: 480px;
+  --layout-input-min-height: 80px;
+  --layout-input-max-height: 200px;
+  --layout-mission-panel-min: 360px;
+  --layout-modal-width: 480px;
+  --layout-section-item-height: 32px;
+  --layout-tool-call-height: 24px;
+  --layout-window-min-width: 1280px;
+  --layout-window-min-height: 800px;
+}

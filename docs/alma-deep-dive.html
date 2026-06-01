@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Alma — Deep Dive Architecture & Intelligence Design</title>
+<style>
+:root {
+  --bg: #05080d;
+  --panel: #0a0e14;
+  --elevated: #11161f;
+  --cyan: #00d9ff;
+  --cyan-dim: rgba(0,217,255,0.1);
+  --amber: #f59e0b;
+  --green: #10f4b1;
+  --violet: #9d5cff;
+  --red: #ff3b30;
+  --pink: #ff6eb4;
+  --text: #e5f2ff;
+  --muted: #4a5868;
+  --secondary: #7b8ea3;
+  --border: #1f2937;
+  --border-s: #2d3b4f;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  padding: 40px 48px;
+  line-height: 1.6;
+  background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent 2px, rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 3px),
+    linear-gradient(rgba(0,217,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,217,255,.025) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* ── Typography ── */
+h1 { font-size: 26px; font-weight: 700; letter-spacing: .18em; color: var(--cyan); text-transform: uppercase; }
+h2 { font-size: 13px; font-weight: 700; letter-spacing: .18em; color: var(--cyan); text-transform: uppercase; margin-bottom: 16px; }
+h3 { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--amber); text-transform: uppercase; margin-bottom: 10px; }
+p  { font-size: 13px; color: var(--secondary); line-height: 1.75; }
+
+.subtitle { font-size: 11px; letter-spacing: .14em; color: var(--secondary); text-transform: uppercase; margin-top: 6px; }
+.label    { font-size: 9px; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; }
+
+/* ── Layout ── */
+.page-header { margin-bottom: 48px; padding-bottom: 20px; border-bottom: 1px solid; border-image: linear-gradient(90deg, transparent, var(--cyan) 30%, var(--cyan) 70%, transparent) 1; }
+.section { margin-bottom: 48px; }
+.section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 10px; border-bottom: 1px solid var(--border-s); }
+.section-number { font-size: 9px; letter-spacing: .2em; color: var(--muted); }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* ── Cards ── */
+.card {
+  position: relative;
+  border: 1px solid var(--border-s);
+  background: var(--panel);
+  padding: 20px;
+}
+.card::before, .card::after {
+  content: ""; position: absolute; width: 10px; height: 10px; pointer-events: none;
+}
+.card::before { top: 0; left: 0; border-top: 1.5px solid var(--card-color, var(--cyan)); border-left: 1.5px solid var(--card-color, var(--cyan)); }
+.card::after  { bottom: 0; right: 0; border-bottom: 1.5px solid var(--card-color, var(--cyan)); border-right: 1.5px solid var(--card-color, var(--cyan)); }
+.card--amber  { --card-color: var(--amber); }
+.card--green  { --card-color: var(--green); }
+.card--violet { --card-color: var(--violet); }
+.card--red    { --card-color: var(--red); }
+.card--pink   { --card-color: var(--pink); }
+
+.card__title { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; color: var(--card-color, var(--cyan)); }
+.card__text  { font-size: 12px; color: var(--secondary); line-height: 1.7; }
+.card__icon  { font-size: 20px; margin-bottom: 10px; line-height: 1; }
+.card__badge { display: inline-block; font-size: 8px; padding: 2px 6px; border: 1px solid var(--card-color, var(--cyan)); color: var(--card-color, var(--cyan)); letter-spacing: .1em; text-transform: uppercase; margin-top: 8px; margin-right: 4px; }
+
+/* ── Arch Diagram ── */
+.arch-layer {
+  border: 1px solid var(--border-s);
+  padding: 16px 20px;
+  margin-bottom: 2px;
+  position: relative;
+}
+.arch-layer::before {
+  content: attr(data-label);
+  position: absolute;
+  left: -54px; top: 50%; transform: translateY(-50%);
+  writing-mode: vertical-rl; transform: translateY(-50%) rotate(180deg);
+  font-size: 8px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--muted);
+}
+.arch-wrap { padding-left: 64px; position: relative; }
+.arch-nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+.anode {
+  border: 1px solid var(--border); background: var(--elevated);
+  padding: 8px 12px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text);
+  transition: border-color .15s, box-shadow .15s;
+  cursor: default; white-space: nowrap;
+}
+.anode:hover { border-color: var(--anode-color, var(--cyan)); box-shadow: 0 0 8px var(--anode-glow, rgba(0,217,255,.2)); }
+.anode--cyan   { --anode-color: var(--cyan); --anode-glow: rgba(0,217,255,.2); }
+.anode--violet { --anode-color: var(--violet); --anode-glow: rgba(157,92,255,.25); }
+.anode--green  { --anode-color: var(--green); --anode-glow: rgba(16,244,177,.2); }
+.anode--amber  { --anode-color: var(--amber); --anode-glow: rgba(245,158,11,.2); }
+.anode--red    { --anode-color: var(--red); --anode-glow: rgba(255,59,48,.2); }
+.anode--pink   { --anode-color: var(--pink); --anode-glow: rgba(255,110,180,.2); }
+.anode sub { font-size: 8px; color: var(--muted); display: block; font-weight: 400; letter-spacing: 0; margin-top: 2px; text-transform: none; }
+
+.arch-divider { display: flex; justify-content: center; padding: 4px 0; }
+.arch-divider span { font-size: 9px; color: var(--muted); letter-spacing: .1em; }
+
+/* ── Source citation ── */
+.source { font-size: 9px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 12px; padding-top: 8px; }
+.source a { color: var(--cyan); text-decoration: none; }
+
+/* ── Flow ── */
+.flow { display: flex; flex-direction: column; gap: 4px; }
+.flow-step {
+  display: grid; grid-template-columns: 28px 1fr;
+  gap: 10px; align-items: center;
+  border-left: 2px solid var(--flow-color, var(--cyan));
+  padding: 6px 12px;
+  background: var(--panel);
+}
+.flow-step__num { font-size: 9px; font-weight: 700; color: var(--flow-color, var(--cyan)); text-align: center; }
+.flow-step__text { font-size: 11px; color: var(--secondary); }
+.flow-step__text strong { color: var(--text); font-weight: 700; }
+.flow--amber .flow-step { --flow-color: var(--amber); }
+.flow--violet .flow-step { --flow-color: var(--violet); }
+.flow--green .flow-step  { --flow-color: var(--green); }
+
+/* ── Comparison table ── */
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.cmp-table th { padding: 8px 12px; border: 1px solid var(--border-s); background: var(--elevated); color: var(--cyan); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-align: left; }
+.cmp-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--secondary); vertical-align: top; line-height: 1.6; }
+.cmp-table tr:hover td { background: rgba(0,217,255,.03); }
+.yes { color: var(--green); font-weight: 700; }
+.partial { color: var(--amber); }
+.no  { color: var(--muted); }
+
+/* ── Highlight block ── */
+.highlight {
+  border-left: 3px solid var(--hl-color, var(--cyan));
+  padding: 12px 16px; background: var(--panel); margin: 16px 0;
+  font-size: 12px; color: var(--secondary); line-height: 1.75;
+}
+.highlight--amber { --hl-color: var(--amber); }
+.highlight--violet { --hl-color: var(--violet); }
+.highlight--green { --hl-color: var(--green); }
+.highlight--red { --hl-color: var(--red); }
+.highlight strong { color: var(--text); }
+
+/* ── Tag ── */
+.tag { display: inline-block; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--border-s); color: var(--secondary); margin: 2px; }
+.tag--cyan   { border-color: var(--cyan); color: var(--cyan); }
+.tag--green  { border-color: var(--green); color: var(--green); }
+.tag--amber  { border-color: var(--amber); color: var(--amber); }
+.tag--violet { border-color: var(--violet); color: var(--violet); }
+.tag--red    { border-color: var(--red); color: var(--red); }
+.tag--pink   { border-color: var(--pink); color: var(--pink); }
+
+/* ── Stat row ── */
+.stats { display: flex; gap: 32px; padding: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 20px 0; }
+.stat__num { font-size: 28px; font-weight: 700; color: var(--cyan); line-height: 1; }
+.stat__label { font-size: 9px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+
+@keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:1} }
+.pulse { animation: pulse 2.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- ══════ HEADER ══════ -->
+<div class="page-header">
+  <h1>Alma — Architecture &amp; Intelligence Design</h1>
+  <p class="subtitle">Based on public sources · yetone/alma-releases · alma.now docs · community research · May 2026</p>
+  <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+    <span class="tag tag--cyan">Electron Desktop</span>
+    <span class="tag tag--cyan">Vercel AI SDK</span>
+    <span class="tag tag--green">v0.0.806 (2026-05-26)</span>
+    <span class="tag tag--amber">yetone · closed source</span>
+    <span class="tag tag--violet">Chinese market primary</span>
+    <span class="tag">alma.now</span>
+  </div>
+</div>
+
+<!-- ══════ 0. CREATOR / VELOCITY ══════ -->
+<div class="section">
+  <div class="stats">
+    <div><div class="stat__num pulse">806+</div><div class="stat__label">Releases in ~5 months</div></div>
+    <div><div class="stat__num">6</div><div class="stat__label">Plugin types</div></div>
+    <div><div class="stat__num">10+</div><div class="stat__label">LLM providers</div></div>
+    <div><div class="stat__num">7.9k</div><div class="stat__label">yetone GitHub followers</div></div>
+    <div><div class="stat__num">24.9k</div><div class="stat__label">OpenAI Translator stars</div></div>
+  </div>
+  <div class="highlight highlight--amber">
+    <strong>Creator:</strong> yetone，中国独立开发者，avante.nvim (17.9k ★) · OpenAI Translator (24.9k ★) 作者。
+    Alma 最初是"给自己用的玩具项目"，2025年12月首发，目前 ~4+ releases/day 的迭代速度，是目前中文世界 AI Client 的事实标杆。
+    <div class="source">Source: <a href="https://github.com/yetone/alma-releases" target="_blank">yetone/alma-releases</a> · <a href="https://x.com/yetone" target="_blank">@yetone Twitter</a></div>
+  </div>
+</div>
+
+<!-- ══════ 1. FULL ARCHITECTURE ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">01</span>
+    <h2>完整技术架构</h2>
+  </div>
+
+  <div class="arch-wrap">
+    <!-- Layer: Desktop Shell -->
+    <div class="arch-layer" style="border-color: rgba(0,217,255,0.2); background: rgba(0,217,255,0.02);">
+      <div class="label" style="margin-bottom:10px;">Desktop Shell</div>
+      <div class="arch-nodes">
+        <div class="anode anode--cyan">Electron<sub>com.yetone.alma</sub></div>
+        <div class="anode anode--cyan">macOS (Apple Silicon)<sub>Windows x64 · Linux AppImage</sub></div>
+        <div class="anode anode--cyan">app.asar bundle<sub>pnpm · Sentry error tracking</sub></div>
+        <div class="anode anode--cyan">PostHog analytics<sub>usage telemetry</sub></div>
+        <div class="anode anode--cyan">Liquid Glass UI<sub>macOS transparency</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ React render tree</span></div>
+
+    <!-- Layer: UI -->
+    <div class="arch-layer" style="border-color: rgba(0,217,255,0.15);">
+      <div class="label" style="margin-bottom:10px;">UI Layer</div>
+      <div class="arch-nodes">
+        <div class="anode anode--cyan">React<sub>component tree</sub></div>
+        <div class="anode anode--cyan">Radix UI<sub>headless primitives</sub></div>
+        <div class="anode anode--cyan">framer-motion<sub>animations</sub></div>
+        <div class="anode anode--cyan">sonner<sub>toast notifications</sub></div>
+        <div class="anode anode--cyan">Artifacts Renderer<sub>HTML/React/SVG iframe</sub></div>
+        <div class="anode anode--cyan">Appshots<sub>rapid screenshot capture</sub></div>
+        <div class="anode anode--cyan">Plugin UI Slots<sub>theme · ui plugins</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ Vercel AI SDK (@ai-sdk/*)</span></div>
+
+    <!-- Layer: Provider Orchestration -->
+    <div class="arch-layer" style="border-color: rgba(157,92,255,0.25); background: rgba(157,92,255,0.02);">
+      <div class="label" style="margin-bottom:10px;">Provider Orchestration</div>
+      <div class="arch-nodes">
+        <div class="anode anode--violet">@ai-sdk/openai<sub>GPT-4o · o3 · mini</sub></div>
+        <div class="anode anode--violet">@ai-sdk/anthropic<sub>Claude Opus/Sonnet/Haiku</sub></div>
+        <div class="anode anode--violet">@ai-sdk/google<sub>Gemini 2.0 Flash</sub></div>
+        <div class="anode anode--violet">@ai-sdk/deepseek<sub>V3 · Reasoner</sub></div>
+        <div class="anode anode--violet">@ai-sdk/azure<sub>Azure OpenAI</sub></div>
+        <div class="anode anode--violet">@ai-sdk/openrouter<sub>multi-model routing</sub></div>
+        <div class="anode anode--violet">OpenAI-compat APIs<sub>Ollama · vLLM · LM Studio · Xiaomi MiMo</sub></div>
+        <div class="anode anode--violet">Alma API Proxy<sub>Anthropic access for CN users</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ Agent Intelligence</span></div>
+
+    <!-- Layer: Agent Core -->
+    <div class="arch-layer" style="border-color: rgba(16,244,177,0.25); background: rgba(16,244,177,0.02);">
+      <div class="label" style="margin-bottom:10px;">Agent Intelligence</div>
+      <div class="arch-nodes">
+        <div class="anode anode--green">Agent Crew<sub>multi-agent orchestration</sub></div>
+        <div class="anode anode--green">Custom Agents<sub>persona · model · tools per agent</sub></div>
+        <div class="anode anode--green">Memory System<sub>semantic embeddings · auto-extract</sub></div>
+        <div class="anode anode--green">text-embedding-3-small<sub>vector embedding model</sub></div>
+        <div class="anode anode--green">Context Compression<sub>auto-compress long convos</sub></div>
+        <div class="anode anode--green">Skills<sub>reusable prompt/workflow templates</sub></div>
+        <div class="anode anode--green">Prompt Apps<sub>parameterized templates</sub></div>
+        <div class="anode anode--green">Extended Thinking<sub>deep reasoning modes</sub></div>
+        <div class="anode anode--green">Incognito Mode<sub>no memory read/write</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ Tool dispatch</span></div>
+
+    <!-- Layer: Tools -->
+    <div class="arch-layer" style="border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.02);">
+      <div class="label" style="margin-bottom:10px;">Tool Ecosystem (20+)</div>
+      <div class="arch-nodes">
+        <div class="anode anode--amber">File System<sub>read · write · search</sub></div>
+        <div class="anode anode--amber">Shell / Code Exec<sub>command execution</sub></div>
+        <div class="anode anode--amber">Web Search<sub>real-time search</sub></div>
+        <div class="anode anode--amber">Built-in Browser<sub>headless Electron window</sub></div>
+        <div class="anode anode--amber">Chrome Browser Relay<sub>real session · CDP · cookies</sub></div>
+        <div class="anode anode--amber">Computer Use<sub>keyboard · mouse control</sub></div>
+        <div class="anode anode--amber">Appshots<sub>screen capture to context</sub></div>
+        <div class="anode anode--amber">Xiaohongshu Search<sub>小红书 CN-specific</sub></div>
+        <div class="anode anode--amber">Whisper STT<sub>voice input</sub></div>
+        <div class="anode anode--amber">Workspaces<sub>project dir binding</sub></div>
+        <div class="anode anode--amber">MCP (via plugins)<sub>third-party servers</sub></div>
+        <div class="anode anode--amber">Codex Integration<sub>via plugin</sub></div>
+        <div class="anode anode--amber">Cursor IDE plugin<sub>editor bridge</sub></div>
+        <div class="anode anode--amber">Telegram Bot<sub>messaging integration</sub></div>
+        <div class="anode anode--amber">iPhone Mirroring<sub>iOS text input</sub></div>
+        <div class="anode anode--amber">alma CLI<sub>`alma project` commands</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ Plugin runtime</span></div>
+
+    <!-- Layer: Plugin System -->
+    <div class="arch-layer" style="border-color: rgba(255,59,48,0.15);">
+      <div class="label" style="margin-bottom:10px;">Plugin System</div>
+      <div class="arch-nodes">
+        <div class="anode anode--red">tool plugin<sub>register new agent tools</sub></div>
+        <div class="anode anode--red">ui plugin<sub>inject UI components</sub></div>
+        <div class="anode anode--red">theme plugin<sub>visual customization</sub></div>
+        <div class="anode anode--red">provider plugin<sub>new LLM provider</sub></div>
+        <div class="anode anode--red">transform plugin<sub>pre/post-process messages</sub></div>
+        <div class="anode anode--red">integration plugin<sub>external services</sub></div>
+        <div class="anode anode--red">Plugin APIs<sub>logger · storage · events · i18n · chat access</sub></div>
+      </div>
+    </div>
+
+    <div class="arch-divider"><span>↓ Persistence</span></div>
+
+    <!-- Layer: Storage -->
+    <div class="arch-layer" style="border-color: rgba(123,142,163,0.2);">
+      <div class="label" style="margin-bottom:10px;">Local Storage</div>
+      <div class="arch-nodes">
+        <div class="anode">Local Vector DB<sub>memory embeddings</sub></div>
+        <div class="anode">Conversation History<sub>sessions · threads</sub></div>
+        <div class="anode">Plugin Persistent Storage<sub>per-plugin kv store</sub></div>
+        <div class="anode">User Config<sub>providers · keys · preferences</sub></div>
+        <div class="anode">Workspace Index<sub>project file mappings</sub></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="source" style="margin-top:16px;">
+    Sources: <a href="https://everettjf.github.io/2026/01/04/alma-analyze/" target="_blank">Reverse Engineering Alma (everettjf, Jan 2026)</a> ·
+    <a href="https://alma.now/docs" target="_blank">alma.now/docs</a> ·
+    <a href="https://github.com/yetone/alma-releases" target="_blank">yetone/alma-releases release notes</a>
+  </div>
+</div>
+
+<!-- ══════ 2. CHROME BROWSER RELAY ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">02</span>
+    <h2>Chrome Browser Relay — 差异化武器</h2>
+  </div>
+  <div class="highlight highlight--amber">
+    <strong>核心优势：</strong>其他工具用的是"干净 Chromium"（无登录态），Alma 通过 Chrome Extension 接管用户<strong>真实 Chrome</strong>，携带完整 cookies/session，可以操作飞书、内网 Jira、公司邮箱等需要登录的系统。
+  </div>
+  <div class="grid-2">
+    <div>
+      <h3>架构链路</h3>
+      <div class="flow flow--amber">
+        <div class="flow-step"><div class="flow-step__num">1</div><div class="flow-step__text">AI 决策调用 <strong>browser_* 工具</strong></div></div>
+        <div class="flow-step"><div class="flow-step__num">2</div><div class="flow-step__text">Alma 主进程发送指令 → <strong>WebSocket (localhost)</strong></div></div>
+        <div class="flow-step"><div class="flow-step__num">3</div><div class="flow-step__text"><strong>Chrome Extension</strong> 接收，使用 chrome.debugger API</div></div>
+        <div class="flow-step"><div class="flow-step__num">4</div><div class="flow-step__text"><strong>CDP (Chrome DevTools Protocol)</strong> 控制目标 Tab</div></div>
+        <div class="flow-step"><div class="flow-step__num">5</div><div class="flow-step__text">操作结果（截图/文本/状态）回传 Alma 注入 context</div></div>
+      </div>
+    </div>
+    <div>
+      <h3>支持操作</h3>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <div class="card" style="padding:12px;"><div class="card__title" style="font-size:10px;">导航 Navigate</div><div class="card__text">访问 URL，等待页面加载完成</div></div>
+        <div class="card" style="padding:12px;"><div class="card__title" style="font-size:10px;">截图 Screenshot</div><div class="card__text">捕获当前 Tab 视口，返回图像给视觉模型</div></div>
+        <div class="card" style="padding:12px;"><div class="card__title" style="font-size:10px;">交互 Click / Type</div><div class="card__text">点击元素、填写表单，可触发登录后的工作流</div></div>
+        <div class="card" style="padding:12px;"><div class="card__title" style="font-size:10px;">文本提取 Get Text</div><div class="card__text">提取 DOM 文本内容，用于分析/总结</div></div>
+      </div>
+      <div class="source">Source: <a href="https://alma.now/docs/features/chrome-relay" target="_blank">alma.now/docs/features/chrome-relay</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 3. MEMORY SYSTEM ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">03</span>
+    <h2>记忆系统 Memory System</h2>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div class="card card--violet">
+      <div class="card__icon">🧠</div>
+      <div class="card__title">双模型架构</div>
+      <div class="card__text">
+        <strong>主 LLM</strong>（用户选择的对话模型）负责理解和生成。<br><br>
+        <strong>独立 Embedding Model</strong>（默认 <code>text-embedding-3-small</code>）专门做记忆向量化和语义检索，不占用主模型 context。
+      </div>
+      <span class="card__badge">text-embedding-3-small</span>
+      <span class="card__badge">local vector db</span>
+    </div>
+    <div class="card card--green">
+      <div class="card__icon">🔄</div>
+      <div class="card__title">自动记忆生命周期</div>
+      <div class="card__text">
+        <strong>对话结束</strong> → 提取重要事实<br>
+        <strong>向量化</strong> → 存入本地向量库<br>
+        <strong>每次回复前</strong> → 语义相似度检索 → top-k 注入 context<br>
+        <strong>Incognito 模式</strong> → 完全禁用读写，当次会话不留痕
+      </div>
+      <span class="card__badge">importance score</span>
+      <span class="card__badge">confidence tag</span>
+      <span class="card__badge">3-layer indexing</span>
+    </div>
+  </div>
+
+  <h3>记忆召回流程</h3>
+  <div class="flow flow--violet">
+    <div class="flow-step"><div class="flow-step__num">①</div><div class="flow-step__text">用户发送新消息 → 提取<strong>查询向量</strong>（embedding model）</div></div>
+    <div class="flow-step"><div class="flow-step__num">②</div><div class="flow-step__text">向量库<strong>余弦相似度搜索</strong>，返回 top-k 条记忆（按相关度排序）</div></div>
+    <div class="flow-step"><div class="flow-step__num">③</div><div class="flow-step__text">相关记忆自动注入 <strong>system prompt 上部</strong>（用户不可见）</div></div>
+    <div class="flow-step"><div class="flow-step__num">④</div><div class="flow-step__text">LLM 生成回复时自然融入记忆上下文，用户感受到"<strong>AI 记住了我</strong>"</div></div>
+    <div class="flow-step"><div class="flow-step__num">⑤</div><div class="flow-step__text">对话结束 → <strong>提取模型</strong>识别新事实 → 写入向量库（带 importance/confidence 评分）</div></div>
+  </div>
+
+  <div class="highlight highlight--green" style="margin-top:16px;">
+    <strong>vs 纯 Markdown Memory（如当前 Plug MVP）：</strong>
+    Markdown 方案随时间膨胀 → token 成本爆炸 + 旧记忆污染上下文。
+    Alma 的向量检索只注入<strong>当前最相关</strong>的记忆，成本恒定，召回精度更高。
+    用户还可以手动查看、编辑、删除具体记忆条目。
+  </div>
+  <div class="source">Source: <a href="https://alma.now/docs/features/memory" target="_blank">alma.now/docs/features/memory</a></div>
+</div>
+
+<!-- ══════ 4. AGENT PERSONALITY ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">04</span>
+    <h2>Agent 性格设计</h2>
+  </div>
+
+  <div class="highlight highlight--red">
+    <strong>公开信息有限：</strong>Alma 是闭源产品，system prompt 未公开泄露。以下分析基于产品行为观察和 yetone 的公开表述。
+  </div>
+
+  <div class="grid-3" style="margin-top:16px;">
+    <div class="card card--pink">
+      <div class="card__icon">🎭</div>
+      <div class="card__title">Agent Crew 多角色</div>
+      <div class="card__text">
+        Alma 不是单一固定性格。<strong>Agent Crew</strong> 允许为每个子 Agent 设定：
+        <br>• 不同的 Model（Claude vs GPT 有不同风格）
+        <br>• 不同的 Perspective/Persona
+        <br>• 不同的可用工具集
+        <br><br>复杂任务由 Crew 拆分并分配给最合适的 Agent，性格随功能角色变化。
+      </div>
+      <span class="card__badge">per-agent persona</span>
+    </div>
+    <div class="card card--pink">
+      <div class="card__icon">🤖</div>
+      <div class="card__title">AI-Native 自操作</div>
+      <div class="card__text">
+        yetone 原话："Alma 可以按照你的指示<strong>自己操作自己</strong>"。<br><br>
+        AI 可以操作 Alma 的 UI 来帮用户配置 Alma，也可以解释如何设置。<br><br>
+        这暗示 Alma 的 system prompt 中包含对自身 UI/功能的详细描述，构建了一种<strong>"元认知"性格</strong>——AI 知道自己是什么。
+      </div>
+      <span class="card__badge">meta-agent</span>
+      <span class="card__badge">self-aware</span>
+    </div>
+    <div class="card card--pink">
+      <div class="card__icon">📐</div>
+      <div class="card__title">模型微调 (未证实)</div>
+      <div class="card__text">
+        中文社区评论称 yetone "fine-tuned all current mainstream models"，
+        使 Alma 的体验在各模型上趋于一致。<br><br>
+        更可能的解释：通过<strong>精细 system prompt engineering</strong> 和 prompt routing 实现跨模型统一行为，而非真正 fine-tune。
+      </div>
+      <span class="card__badge">prompt engineering</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 5. USER CARE ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">05</span>
+    <h2>用户关怀设计</h2>
+  </div>
+
+  <div class="highlight highlight--amber">
+    Alma 的"关怀感"主要来自<strong>技术层面的设计</strong>，而不是显式的情感 AI 功能。核心策略是通过记忆连续性制造"AI 认识你"的感受。
+  </div>
+
+  <div class="grid-2" style="margin-top:16px;">
+    <div>
+      <h3>已确认的关怀机制</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="card" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">🧠 记忆连续性</div>
+          <div class="card__text">跨对话记住用户偏好、工作上下文、历史决策。用户感受到 AI "认识自己"，而不是每次从零开始。</div>
+        </div>
+        <div class="card" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">🕵️ Incognito 模式</div>
+          <div class="card__text">明确告知用户"这次对话不会被记住"，尊重隐私边界，给用户控制感。</div>
+        </div>
+        <div class="card" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">🎤 Whisper 语音输入</div>
+          <div class="card__text">语音交互降低沟通门槛，对习惯语音记录的用户更自然、更接近"助理"感。</div>
+        </div>
+        <div class="card" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">📱 iPhone Mirroring 支持</div>
+          <div class="card__text">支持 iOS 镜像文本输入，用户随时随地都能与 Alma 交互，无摩擦感。</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3>值得注意的缺位</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="card card--red" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">❌ 未见主动关怀</div>
+          <div class="card__text">没有公开证据显示 Alma 有主动问候、情感安抚、用户情绪识别等功能。定位是<strong>效率工具</strong>而非情感 AI。</div>
+        </div>
+        <div class="card card--red" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">❌ 无用户状态追踪</div>
+          <div class="card__text">没有"你上次在做 X，要继续吗？"的会话续接设计（这在 Copilot/Gemini 中较常见）。</div>
+        </div>
+        <div class="card card--red" style="padding:14px;">
+          <div class="card__title" style="font-size:10px;">❌ 无显式关系层</div>
+          <div class="card__text">不同于 Character.ai 或 Pi.ai，Alma 没有建立"AI 伴侣/导师"角色。偏向工具性，记忆系统是功能增益而非情感纽带。</div>
+        </div>
+        <div class="card" style="padding:14px; border-color: var(--amber);">
+          <div class="card__title" style="font-size:10px; color: var(--amber);">⚡ 设计哲学差异</div>
+          <div class="card__text">Alma 的关怀逻辑：让 AI <strong>更有用</strong>（记忆、效率）= 间接关怀。而非显式的情感设计。对效率优先的知识工作者这条路更可持续。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ 6. vs PLUG ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">06</span>
+    <h2>Alma vs Plug — 能力对比</h2>
+  </div>
+  <table class="cmp-table">
+    <thead>
+      <tr>
+        <th>能力维度</th>
+        <th>Alma</th>
+        <th>Plug (当前)</th>
+        <th>Gap</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>工具总数</td>
+        <td><span class="yes">20+</span></td>
+        <td><span class="yes">20</span> (刚补齐)</td>
+        <td class="yes">✓ 对齐</td>
+      </tr>
+      <tr>
+        <td>记忆系统</td>
+        <td><span class="yes">向量语义检索 + 自动提取 + 3层索引</span></td>
+        <td><span class="partial">markdown memory.md (关键词搜索)</span></td>
+        <td class="no">Phase 2 待实现</td>
+      </tr>
+      <tr>
+        <td>多模型支持</td>
+        <td><span class="yes">10+ providers，统一 API</span></td>
+        <td><span class="yes">多 provider，settings 配置</span></td>
+        <td class="yes">✓ 对齐</td>
+      </tr>
+      <tr>
+        <td>Chrome Browser Relay</td>
+        <td><span class="yes">Chrome Extension + CDP，真实登录态</span></td>
+        <td><span class="partial">headless Electron window (无登录态)</span></td>
+        <td class="no">Phase 2: Chrome Extension 未做</td>
+      </tr>
+      <tr>
+        <td>Multi-Agent (Crew)</td>
+        <td><span class="yes">Agent Crew，自动分发任务给专属 Agent</span></td>
+        <td class="no">未实现</td>
+        <td class="no">Phase 2 大改动</td>
+      </tr>
+      <tr>
+        <td>Computer Use</td>
+        <td><span class="yes">键鼠控制，iPhone Mirroring</span></td>
+        <td class="no">未实现</td>
+        <td class="no">Phase 2</td>
+      </tr>
+      <tr>
+        <td>Plugin 系统</td>
+        <td><span class="yes">6 类插件，plugin marketplace</span></td>
+        <td class="no">无</td>
+        <td class="no">Phase 3 规划</td>
+      </tr>
+      <tr>
+        <td>Artifacts 渲染</td>
+        <td><span class="yes">HTML/React/SVG iframe sandbox</span></td>
+        <td><span class="partial">Doc 面板 Markdown 预览</span></td>
+        <td class="no">Phase 2</td>
+      </tr>
+      <tr>
+        <td>Extended Thinking</td>
+        <td><span class="yes">已支持</span></td>
+        <td class="no">未实现</td>
+        <td class="no">Phase 2</td>
+      </tr>
+      <tr>
+        <td>语音输入 (Whisper)</td>
+        <td><span class="yes">内置</span></td>
+        <td class="no">未实现</td>
+        <td class="no">可独立实现</td>
+      </tr>
+      <tr>
+        <td>MCP 集成</td>
+        <td><span class="yes">通过插件</span></td>
+        <td><span class="partial">架构预留，未实现</span></td>
+        <td class="no">Phase 2</td>
+      </tr>
+      <tr>
+        <td>定位差异</td>
+        <td>泛知识工作者 + 开发者</td>
+        <td><strong>产品经理专用</strong> (PM workspace)</td>
+        <td class="yes">Plug 有垂直优势</td>
+      </tr>
+      <tr>
+        <td>机甲座舱 UI 设计</td>
+        <td><span class="partial">优雅通用</span></td>
+        <td><span class="yes">EVA/JARVIS 强科幻感，差异化定位</span></td>
+        <td class="yes">Plug 有设计优势</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════ 7. SUMMARY ══════ -->
+<div class="section">
+  <div class="section-head">
+    <span class="section-number">07</span>
+    <h2>结论 &amp; 对 Plug 的启示</h2>
+  </div>
+  <div class="grid-2">
+    <div>
+      <h3>Alma 的核心护城河</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="highlight highlight--amber" style="margin:0"><strong>1. 向量记忆系统</strong>：最大的技术壁垒，让 AI 真正"认识"用户，产生粘性</div>
+        <div class="highlight highlight--amber" style="margin:0"><strong>2. Chrome Browser Relay</strong>：真实登录态，是其他工具做不到的</div>
+        <div class="highlight highlight--amber" style="margin:0"><strong>3. Agent Crew</strong>：多 Agent 协作是复杂任务的关键，Alma 走得最远</div>
+        <div class="highlight highlight--amber" style="margin:0"><strong>4. Plugin 生态</strong>：开放平台策略，积累网络效应</div>
+        <div class="highlight highlight--amber" style="margin:0"><strong>5. 发布速度</strong>：~4 releases/day，用户反馈 → 修复 → 上线极快</div>
+      </div>
+    </div>
+    <div>
+      <h3>Plug 的差异化空间</h3>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="highlight highlight--cyan" style="margin:0"><strong>1. PM 垂直深度</strong>：Alma 不专注 PM，Plug 可以在 PRD/竞品/交付物上做深</div>
+        <div class="highlight highlight--cyan" style="margin:0"><strong>2. 机甲座舱体验</strong>：差异化的 UI/UX 定位，有辨识度</div>
+        <div class="highlight highlight--cyan" style="margin:0"><strong>3. 国产企业工具生态</strong>：飞书/语雀/PingCode MCP 是 Alma 尚未覆盖的</div>
+        <div class="highlight highlight--violet" style="margin:0"><strong>⚠️ 最紧迫的 Gap</strong>：向量记忆系统是 Plug 必须实现的，否则用户忠诚度会输给 Alma</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="source" style="margin-top:24px;">
+    All information from public sources ·
+    <a href="https://alma.now" target="_blank">alma.now</a> ·
+    <a href="https://github.com/yetone/alma-releases" target="_blank">github.com/yetone/alma-releases</a> ·
+    <a href="https://everettjf.github.io/2026/01/04/alma-analyze/" target="_blank">Reverse Engineering Alma — everettjf (Jan 2026)</a> ·
+    <a href="https://www.80aj.com/2026/01/05/yetone-alma-ai-client/" target="_blank">Alma 评测 (80aj.com)</a> ·
+    <a href="https://feedback.alma.now" target="_blank">feedback.alma.now</a>
+  </div>
+</div>
+
+</body>
+</html>

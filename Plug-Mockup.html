@@ -1,0 +1,2627 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Plug — Visual Mockup</title>
+<meta name="viewport" content="width=1440, initial-scale=1">
+
+<!-- 字体：Orbitron 用于 PLUG wordmark；JetBrains Mono 用于 HUD/数字；Inter 用于英文 UI；中文用系统 PingFang/MiSans -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ====================================================================
+   PLUG — DESIGN TOKENS
+   严格按照 Plug-Design-Brief.md §1-§3 实现
+   ==================================================================== */
+:root {
+  /* ─── 背景层级 ─── */
+  --bg-void:        #05080D;
+  --bg-panel:       #0A0E14;
+  --bg-elevated:    #11161F;
+  --bg-overlay:     #1A2230;
+
+  /* ─── 边框 ─── */
+  --border-subtle:  rgba(255, 255, 255, 0.04);
+  --border-default: #1F2937;
+  --border-strong:  #2D3B4F;
+  --border-accent:  #00D9FF;
+  --border-glow:    rgba(0, 217, 255, 0.4);
+
+  /* ─── Accent ─── */
+  --accent-cyan:    #00D9FF;
+  --accent-cyan-dim:#0099B8;
+  --accent-amber:   #F59E0B;
+  --accent-red:     #FF3B30;
+  --accent-red-dim: #B82D24;
+  --accent-green:   #10F4B1;
+  --accent-violet:  #9D5CFF;
+
+  /* ─── Text ─── */
+  --text-primary:   #E5F2FF;
+  --text-secondary: #7B8EA3;
+  --text-muted:     #4A5868;
+  --text-hud:       #00D9FF;
+  --text-on-accent: #05080D;
+
+  /* ─── Status BG ─── */
+  --status-running: rgba(0, 217, 255, 0.08);
+  --status-waiting: rgba(245, 158, 11, 0.08);
+  --status-error:   rgba(255, 59, 48, 0.08);
+  --status-success: rgba(16, 244, 177, 0.08);
+
+  /* ─── Shadows / Glows ─── */
+  --glow-cyan:  0 0 12px rgba(0, 217, 255, 0.25);
+  --glow-amber: 0 0 12px rgba(245, 158, 11, 0.25);
+  --glow-red:   0 0 16px rgba(255, 59, 48, 0.4);
+  --glow-green: 0 0 12px rgba(16, 244, 177, 0.25);
+  --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.8);
+
+  /* ─── Fonts ─── */
+  --font-cn-ui: "MiSans", "PingFang SC", "HarmonyOS Sans SC", system-ui, sans-serif;
+  --font-en-ui: "Inter", "SF Pro Text", system-ui, sans-serif;
+  --font-display: "Orbitron", "Rajdhani", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+
+  /* ─── Easing ─── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ====================================================================
+   RESET + BASE
+   ==================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow: hidden; }
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-cn-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: inherit; color: inherit; }
+
+/* ====================================================================
+   MOCKUP SWITCHER (DEMO 控制条，独立于 Plug 真实 UI)
+   ==================================================================== */
+.demo-switcher {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 40px;
+  background: rgba(5, 8, 13, 0.95);
+  border-bottom: 1px solid var(--border-default);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  z-index: 1000;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.demo-switcher .label {
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+.demo-switcher button {
+  padding: 4px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 160ms var(--ease-out);
+}
+.demo-switcher button:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.demo-switcher button.active {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(0, 217, 255, 0.08);
+  box-shadow: var(--glow-cyan);
+}
+.demo-switcher .spacer { flex: 1; }
+.demo-switcher .note {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+/* ====================================================================
+   SCREEN CONTAINER
+   ==================================================================== */
+.screen {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+}
+.screen.active { display: block; }
+
+/* ====================================================================
+   HUD COMMON ELEMENTS
+   ==================================================================== */
+.hud-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  color: var(--border-accent);
+}
+.hud-corner.tl { top: 0; left: 0; }
+.hud-corner.tr { top: 0; right: 0; }
+.hud-corner.bl { bottom: 0; left: 0; }
+.hud-corner.br { bottom: 0; right: 0; }
+
+.hud-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-hud);
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* 双线 panel */
+.panel-double {
+  position: relative;
+  border: 1px solid var(--border-default);
+  box-shadow:
+    inset 0 0 0 1px var(--bg-panel),
+    inset 0 0 0 2px var(--border-default);
+}
+.panel-double.accent {
+  border-color: var(--border-accent);
+  box-shadow:
+    inset 0 0 0 1px var(--bg-panel),
+    inset 0 0 0 2px var(--border-accent),
+    var(--glow-cyan);
+}
+
+/* ====================================================================
+   SCREEN 1: LAUNCHER (启动页)
+   ==================================================================== */
+.launcher {
+  background: var(--bg-void);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.launcher::before {
+  /* 背景细网格装饰 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 217, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 217, 255, 0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+.launcher-top {
+  height: 48px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+.launcher-top .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.launcher-top .brand .wordmark {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-primary);
+}
+.launcher-top .brand .system-online {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--accent-cyan);
+  padding-left: 10px;
+  border-left: 1px solid var(--border-default);
+}
+
+.launcher-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  z-index: 1;
+}
+.launcher-inner {
+  width: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+}
+
+/* PLUG 大 wordmark */
+.launcher-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.launcher-logo .glyph {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan);
+}
+.launcher-logo .wordmark-large {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  position: relative;
+}
+.launcher-logo .tagline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.launcher-logo .tagline .dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--accent-cyan);
+  margin: 0 8px;
+  transform: rotate(45deg);
+  vertical-align: middle;
+  box-shadow: var(--glow-cyan);
+}
+
+/* 新建项目按钮 */
+.btn-new-mission {
+  width: 420px;
+  height: 56px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--accent-cyan);
+  border-radius: 4px;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+  transition: all 240ms var(--ease-out);
+  box-shadow: var(--glow-cyan);
+}
+.btn-new-mission:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-void);
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+}
+.btn-new-mission .diamond {
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+/* 最近项目 list */
+.recent-section {
+  width: 100%;
+  max-width: 720px;
+}
+.recent-section .section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.recent-section .section-head .hud-label {
+  white-space: nowrap;
+}
+.recent-section .section-head .line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-default);
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border-default);
+  background: var(--border-default);
+}
+.recent-item {
+  background: var(--bg-panel);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 160ms var(--ease-out);
+  cursor: pointer;
+}
+.recent-item:hover {
+  background: var(--bg-elevated);
+}
+.recent-item .diamond-outline {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--accent-cyan);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+.recent-item .name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.recent-item .meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.recent-item .status-active { color: var(--accent-cyan); }
+.recent-item .status-standby { color: var(--text-secondary); }
+.recent-item .status-archive { color: var(--text-muted); }
+
+/* 系统配置区 */
+.system-config {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.system-config .config-btn {
+  flex: 1;
+  height: 40px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 160ms var(--ease-out);
+}
+.system-config .config-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.launcher-bottom {
+  height: 32px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+}
+.launcher-bottom .status-led {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+/* ====================================================================
+   SCREEN 2-4: WORKSPACE (项目工作界面)
+   ==================================================================== */
+.workspace {
+  background: var(--bg-void);
+  height: 100%;
+  display: grid;
+  grid-template-rows: 48px 1fr 32px;
+  grid-template-columns: 220px 1fr 380px;
+  grid-template-areas:
+    "top top top"
+    "nav main doc"
+    "bottom bottom bottom";
+}
+
+/* 顶栏 HUD Bar */
+.top-bar {
+  grid-area: top;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 24px;
+  position: relative;
+}
+.top-bar .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-primary);
+}
+.top-bar .brand .glyph {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-cyan);
+}
+.top-bar .project-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-default);
+  flex: 1;
+}
+.top-bar .project-info .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.top-bar .project-info .name {
+  font-family: var(--font-cn-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.top-bar .sync-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--status-running);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+  border-radius: 2px;
+}
+.top-bar .sync-display .hud-label {
+  font-size: 9px;
+}
+.top-bar .sync-display .value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  font-variant-numeric: tabular-nums;
+}
+.top-bar .controls {
+  display: flex;
+  gap: 8px;
+}
+.top-bar .top-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  transition: all 160ms var(--ease-out);
+}
+.top-bar .top-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.top-bar .top-btn .arrow {
+  font-size: 8px;
+  color: var(--text-muted);
+}
+.top-bar .top-btn.mode-plan {
+  border-color: rgba(157, 92, 255, 0.5);
+  color: var(--accent-violet);
+}
+.top-bar .icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  transition: all 160ms var(--ease-out);
+}
+.top-bar .icon-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+/* 左栏 NAV */
+.nav {
+  grid-area: nav;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+}
+.nav .nav-section {
+  padding: 0 8px;
+}
+.nav .nav-section + .nav-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-default);
+}
+.nav .nav-head {
+  padding: 0 12px 8px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: all 160ms var(--ease-out);
+}
+.nav-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.nav-item.active {
+  background: var(--bg-elevated);
+  color: var(--accent-cyan);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+.nav-item .diamond-icon {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-item .diamond-icon::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border: 1.25px solid currentColor;
+  transform: rotate(45deg);
+}
+.nav-item.active .diamond-icon::before {
+  background: currentColor;
+}
+.nav-item .name { flex: 1; }
+.nav-item .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* 左栏底部仪表盘 */
+.nav-gauges {
+  margin-top: auto;
+  padding: 16px 12px 8px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gauge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gauge .hex-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+}
+.gauge .gauge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.gauge .gauge-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gauge .gauge-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.gauge .gauge-value.cyan { color: var(--accent-cyan); }
+.gauge .gauge-value.green { color: var(--accent-green); }
+
+/* 中栏 MAIN */
+.main {
+  grid-area: main;
+  background: var(--bg-void);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.session-switcher {
+  height: 40px;
+  border-bottom: 1px solid var(--border-default);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-panel);
+}
+.session-switcher .session-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 160ms var(--ease-out);
+}
+.session-switcher .session-current:hover {
+  background: var(--bg-elevated);
+}
+.session-switcher .session-current .name {
+  font-family: var(--font-cn-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.session-switcher .session-current .arrow {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+.session-switcher .new-session-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  padding: 4px 8px;
+  border-radius: 2px;
+  transition: background 160ms var(--ease-out);
+}
+.session-switcher .new-session-btn:hover {
+  background: rgba(0, 217, 255, 0.08);
+}
+
+.conversation {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.conversation::-webkit-scrollbar { width: 6px; }
+.conversation::-webkit-scrollbar-track { background: transparent; }
+.conversation::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+/* 用户消息 */
+.msg-user {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.msg-user .prompt {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.msg-user .content {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+/* AI 响应 */
+.msg-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.msg-ai .ai-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.msg-ai .ai-head .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+.msg-ai .ai-head .meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.msg-ai .ai-head .streaming-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.msg-ai .ai-head .streaming-indicator .dot {
+  width: 3px;
+  height: 3px;
+  background: var(--accent-cyan);
+  border-radius: 50%;
+  animation: pulse-fade 1.2s infinite;
+}
+.msg-ai .ai-head .streaming-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+.msg-ai .ai-head .streaming-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse-fade {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+.msg-ai .content {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  padding-left: 16px;
+  border-left: 1px solid var(--border-default);
+}
+.msg-ai .content code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-elevated);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--accent-cyan);
+}
+
+/* Tool call rows */
+.tool-call {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  height: 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border-radius: 2px;
+  background: var(--status-running);
+  border-left: 2px solid var(--accent-cyan);
+}
+.tool-call.success {
+  background: var(--status-success);
+  border-left-color: var(--accent-green);
+  color: var(--accent-green);
+}
+.tool-call.error {
+  background: var(--status-error);
+  border-left-color: var(--accent-red);
+  color: var(--accent-red);
+}
+.tool-call.pending {
+  background: var(--status-waiting);
+  border-left-color: var(--accent-amber);
+  color: var(--accent-amber);
+}
+.tool-call .arrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.tool-call .name {
+  font-weight: 600;
+}
+.tool-call .args {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+.tool-call.success .args,
+.tool-call.error .args,
+.tool-call.pending .args {
+  opacity: 1;
+}
+.tool-call .status {
+  margin-left: auto;
+  font-weight: 700;
+}
+.tool-call .duration {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* MISSION PANEL */
+.mission-panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent-cyan);
+  position: relative;
+  margin: 4px 0;
+  box-shadow: var(--glow-cyan);
+  max-width: 480px;
+}
+.mission-panel .corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  color: var(--accent-cyan);
+}
+.mission-panel .corner.tl { top: -1px; left: -1px; }
+.mission-panel .corner.tr { top: -1px; right: -1px; }
+.mission-panel .corner.bl { bottom: -1px; left: -1px; }
+.mission-panel .corner.br { bottom: -1px; right: -1px; }
+.mission-panel .corner svg { display: block; }
+
+.mission-panel.paused {
+  border-color: var(--accent-amber);
+  box-shadow: var(--glow-amber);
+}
+.mission-panel.paused .corner { color: var(--accent-amber); }
+.mission-panel.paused .mission-head .title { color: var(--accent-amber); }
+
+.mission-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px dashed var(--border-default);
+}
+.mission-head .head-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.mission-head .title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+.mission-head .head-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.mission-head .head-meta .separator {
+  margin: 0 6px;
+  color: var(--text-muted);
+}
+.mission-head .head-meta .eta {
+  color: var(--accent-cyan);
+}
+.mission-panel.paused .mission-head .head-meta .eta {
+  color: var(--accent-amber);
+}
+.mission-steps {
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.step .index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.step .icon {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.step .content { flex: 1; }
+.step .current-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent-cyan);
+  padding: 2px 6px;
+  border: 1px solid var(--accent-cyan);
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+.step.done { color: var(--accent-green); }
+.step.done .icon { color: var(--accent-green); }
+.step.current {
+  color: var(--accent-cyan);
+  animation: step-pulse 1.5s ease-in-out infinite;
+}
+.step.current .icon { color: var(--accent-cyan); }
+.step.pending { color: var(--text-muted); }
+.step.pending .icon { color: var(--text-muted); }
+.step.waiting { color: var(--accent-amber); }
+.step.waiting .icon { color: var(--accent-amber); }
+
+@keyframes step-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.step-substeps {
+  margin-left: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0;
+}
+.step-substeps .sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-substeps .sub::before {
+  content: '└─';
+  color: var(--text-muted);
+}
+.step-substeps .sub .progress {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.mission-actions {
+  border-top: 1px dashed var(--border-default);
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+}
+.mission-btn {
+  flex: 1;
+  height: 32px;
+  background: transparent;
+  border: 1px solid;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 160ms var(--ease-out);
+}
+.mission-btn.pause {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+}
+.mission-btn.pause:hover {
+  background: var(--accent-amber);
+  color: var(--bg-void);
+}
+.mission-btn.override {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.mission-btn.override:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-void);
+}
+.mission-btn.abort {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+.mission-btn.abort:hover {
+  background: var(--accent-red);
+  color: var(--bg-void);
+}
+.mission-btn.resume {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: var(--status-running);
+}
+
+/* 输入框区 */
+.input-area {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-panel);
+}
+.input-wrapper {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  position: relative;
+  transition: all 240ms var(--ease-out);
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+}
+.input-wrapper.focused,
+.input-wrapper:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+  animation: input-breath 1.5s ease-in-out infinite;
+}
+@keyframes input-breath {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 217, 255, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(0, 217, 255, 0.35); }
+}
+.input-box {
+  flex: 1;
+  min-height: 56px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  display: block;
+  background: transparent;
+}
+.input-box:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-controls {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 12px;
+  border-top: 1px solid var(--border-default);
+  gap: 6px;
+}
+.input-controls .hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+.input-controls .hint kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  box-shadow: inset 0 -1px 0 var(--border-default);
+  color: var(--text-secondary);
+  margin: 0 2px;
+}
+.input-controls .mic-btn,
+.input-controls .send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  transition: all 160ms var(--ease-out);
+}
+.input-controls .mic-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.input-controls .send-btn {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: var(--status-running);
+}
+.input-controls .send-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-void);
+}
+
+/* 右栏 DOC */
+.doc-panel {
+  grid-area: doc;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.doc-head {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-default);
+  gap: 10px;
+}
+.doc-head .hud-label {
+  font-size: 10px;
+}
+.doc-tabs {
+  height: 36px;
+  display: flex;
+  border-bottom: 1px solid var(--border-default);
+  padding: 0 8px;
+  gap: 1px;
+}
+.doc-tab {
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 160ms var(--ease-out);
+}
+.doc-tab:hover { color: var(--text-primary); }
+.doc-tab.active {
+  color: var(--text-primary);
+}
+.doc-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+.doc-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.doc-content::-webkit-scrollbar { width: 6px; }
+.doc-content::-webkit-scrollbar-thumb { background: var(--border-strong); }
+.doc-content h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-default);
+}
+.doc-content h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 18px 0 8px;
+}
+.doc-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  margin: 14px 0 6px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.doc-content p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.doc-content code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-elevated);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--accent-cyan);
+}
+.doc-content ul, .doc-content ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+.doc-content li {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin: 3px 0;
+}
+.doc-content .key-decision {
+  background: var(--status-running);
+  border-left: 2px solid var(--accent-cyan);
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.doc-content .key-decision .label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.doc-bottom {
+  height: 36px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+}
+.doc-bottom .doc-btn {
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  transition: all 160ms var(--ease-out);
+}
+.doc-bottom .doc-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+/* 底部状态栏 */
+.bottom-bar {
+  grid-area: bottom;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bottom-bar .status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-cyan);
+}
+.bottom-bar .status .led {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+  border-radius: 50%;
+  animation: led-blink 1.5s ease-in-out infinite;
+}
+@keyframes led-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.bottom-bar .meta {
+  color: var(--text-secondary);
+}
+.bottom-bar .meta .num {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.bottom-bar .separator {
+  color: var(--text-muted);
+}
+.bottom-bar .spacer { flex: 1; }
+.bottom-bar .right-meta {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ====================================================================
+   DECISION MODAL
+   ==================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 13, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 240ms var(--ease-out);
+}
+.modal-backdrop.active { display: flex; }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  width: 520px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--accent-amber);
+  border-radius: 4px;
+  box-shadow: var(--shadow-modal), var(--glow-amber);
+  position: relative;
+  animation: modal-in 240ms var(--ease-out), modal-pulse 1.2s ease-in-out infinite;
+}
+@keyframes modal-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes modal-pulse {
+  0%, 100% { box-shadow: var(--shadow-modal), 0 0 20px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: var(--shadow-modal), 0 0 32px rgba(245, 158, 11, 0.5); }
+}
+.modal .corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  color: var(--accent-amber);
+}
+.modal .corner.tl { top: -2px; left: -2px; }
+.modal .corner.tr { top: -2px; right: -2px; }
+.modal .corner.bl { bottom: -2px; left: -2px; }
+.modal .corner.br { bottom: -2px; right: -2px; }
+
+.modal-header {
+  padding: 18px 24px 14px;
+  text-align: center;
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
+}
+.modal-header .warning-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--accent-amber);
+  margin: 0 auto 8px;
+  display: block;
+}
+.modal-header .title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+}
+.modal-body {
+  padding: 20px 24px;
+}
+.modal-body .row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.modal-body .row .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  width: 72px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.modal-body .row .value {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-void);
+  padding: 6px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-default);
+}
+.modal-body .row .value.normal {
+  font-family: var(--font-cn-ui);
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+.modal-body .diff-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.modal-body .diff-link:hover { text-decoration: underline; }
+.modal-actions {
+  padding: 16px 24px 20px;
+  border-top: 1px dashed rgba(245, 158, 11, 0.3);
+  display: flex;
+  gap: 12px;
+}
+.modal-actions .action {
+  flex: 1;
+  height: 48px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px solid;
+  transition: all 160ms var(--ease-out);
+}
+.modal-actions .keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  box-shadow: inset 0 -1px 0 var(--border-default);
+}
+.modal-actions .approve {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-void);
+}
+.modal-actions .approve:hover {
+  background: #4DE5FF;
+  border-color: #4DE5FF;
+}
+.modal-actions .reject {
+  background: transparent;
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+.modal-actions .reject:hover {
+  background: var(--accent-red);
+  color: var(--bg-void);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================================
+     DEMO SWITCHER (mockup 控制条，不是 Plug 真实 UI 一部分)
+     ==================================================================== -->
+<div class="demo-switcher">
+  <span class="label">PLUG MOCKUP · VIEW</span>
+  <button data-view="launcher" class="active">01 Launcher</button>
+  <button data-view="workspace-executing">02 Workspace · Executing</button>
+  <button data-view="workspace-planning">03 Workspace · Planning</button>
+  <button data-view="workspace-awaiting">04 Workspace · Awaiting</button>
+  <button data-view="modal" data-modal="true">05 Decision Modal</button>
+  <span class="spacer"></span>
+  <span class="note">designed per Plug-Design-Brief.md · 1440×900</span>
+</div>
+
+
+<!-- ====================================================================
+     SCREEN 01: LAUNCHER
+     ==================================================================== -->
+<div class="screen active" data-screen="launcher">
+  <div class="launcher">
+    <div class="launcher-top">
+      <div class="brand">
+        <svg width="18" height="18" viewBox="0 0 64 64" fill="none" style="color:var(--accent-cyan);">
+          <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="2.5" fill="none" opacity="0.6"/>
+          <circle cx="32" cy="32" r="12" stroke="currentColor" stroke-width="2.5" fill="none"/>
+          <circle cx="32" cy="32" r="5" fill="currentColor"/>
+        </svg>
+        <span class="wordmark">PLUG</span>
+        <span class="system-online">SYSTEM ONLINE</span>
+      </div>
+      <button class="icon-btn" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-default);color:var(--text-secondary);">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M 8 1.5 V 3.5 M 8 12.5 V 14.5 M 1.5 8 H 3.5 M 12.5 8 H 14.5 M 3.4 3.4 L 4.8 4.8 M 11.2 11.2 L 12.6 12.6 M 3.4 12.6 L 4.8 11.2 M 11.2 4.8 L 12.6 3.4" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="launcher-body">
+      <div class="launcher-inner">
+        <div class="launcher-logo">
+          <div class="glyph">
+            <svg width="80" height="80" viewBox="0 0 64 64" fill="none">
+              <path d="M 4 12 L 4 4 L 12 4" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+              <path d="M 52 4 L 60 4 L 60 12" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+              <path d="M 60 52 L 60 60 L 52 60" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+              <path d="M 12 60 L 4 60 L 4 52" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+              <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.5"/>
+              <circle cx="32" cy="32" r="12" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              <circle cx="32" cy="32" r="4" fill="currentColor"/>
+              <line x1="32" y1="10" x2="32" y2="18" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="32" y1="46" x2="32" y2="54" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="10" y1="32" x2="18" y2="32" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="46" y1="32" x2="54" y2="32" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="wordmark-large">PLUG</div>
+          <div class="tagline">PILOT <span class="dot"></span> AI <span class="dot"></span> EXECUTE</div>
+        </div>
+
+        <button class="btn-new-mission">
+          <span class="diamond"></span>
+          INITIALIZE NEW MISSION
+          <span class="diamond"></span>
+        </button>
+
+        <div class="recent-section">
+          <div class="section-head">
+            <span class="hud-label">Recent Missions</span>
+            <span class="line"></span>
+            <span class="hud-label" style="color:var(--text-muted);">3 ACTIVE</span>
+          </div>
+          <div class="recent-list">
+            <div class="recent-item">
+              <span class="diamond-outline"></span>
+              <span class="name">登录系统重构</span>
+              <span class="meta status-active">● ACTIVE · 2 HRS AGO</span>
+            </div>
+            <div class="recent-item">
+              <span class="diamond-outline"></span>
+              <span class="name">内容日历 2026Q2</span>
+              <span class="meta status-standby">○ STANDBY · 1 DAY AGO</span>
+            </div>
+            <div class="recent-item">
+              <span class="diamond-outline"></span>
+              <span class="name">用户研究报告</span>
+              <span class="meta status-archive">⊘ ARCHIVED · 3 DAYS AGO</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="system-config">
+          <button class="config-btn">PROVIDERS</button>
+          <button class="config-btn">MCP</button>
+          <button class="config-btn">PERSONAS</button>
+          <button class="config-btn">PREFERENCES</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="launcher-bottom">
+      <span class="status-led" style="background:var(--accent-cyan);box-shadow:var(--glow-cyan);"></span>
+      <span>STATUS: STANDBY · NO ACTIVE MISSION · AWAITING PILOT INPUT</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCREEN 02: WORKSPACE · EXECUTING
+     ==================================================================== -->
+<div class="screen" data-screen="workspace-executing">
+  <div class="workspace">
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <div class="brand">
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="3" fill="none" opacity="0.5"/>
+          <circle cx="32" cy="32" r="11" stroke="currentColor" stroke-width="3" fill="none"/>
+          <circle cx="32" cy="32" r="5" fill="currentColor"/>
+        </svg>
+        PLUG
+      </div>
+      <div class="project-info">
+        <span class="label">Project</span>
+        <span class="name">登录系统重构</span>
+      </div>
+      <div class="sync-display">
+        <span class="hud-label">SYNC</span>
+        <span class="value" id="sync-num">87</span>
+        <span class="hud-label" style="color:var(--text-secondary);font-size:9px;">%</span>
+      </div>
+      <div class="controls">
+        <button class="top-btn">
+          <span style="color:var(--accent-cyan);font-size:9px;">◆</span>
+          DEEPSEEK-V3
+          <span class="arrow">▼</span>
+        </button>
+        <button class="top-btn">
+          <span>EXECUTE</span>
+          <span class="arrow">▼</span>
+        </button>
+        <button class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M 8 1.5 V 3.5 M 8 12.5 V 14.5 M 1.5 8 H 3.5 M 12.5 8 H 14.5 M 3.4 3.4 L 4.8 4.8 M 11.2 11.2 L 12.6 12.6 M 3.4 12.6 L 4.8 11.2 M 11.2 4.8 L 12.6 3.4" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="nav">
+      <div class="nav-section">
+        <div class="nav-head"><span class="hud-label">Mission Sections</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">主页</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">项目目的</span></div>
+        <div class="nav-item active">
+          <span class="diamond-icon"></span><span class="name">PRD</span>
+          <span class="status-dot"></span>
+        </div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">设计</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">代码</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">知识仓库</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">交付物</span></div>
+      </div>
+
+      <div class="nav-gauges">
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">MCP</span>
+            <span class="gauge-value green">3/5 ACT</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Token</span>
+            <span class="gauge-value cyan">23.4k / 64k</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Latency</span>
+            <span class="gauge-value">142 ms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="session-switcher">
+        <div class="session-current">
+          <span style="color:var(--accent-cyan);font-size:10px;">◆</span>
+          <span class="name">PRD 撰写 #001</span>
+          <span class="arrow">▼</span>
+        </div>
+        <button class="new-session-btn">+ NEW SESSION</button>
+      </div>
+
+      <div class="conversation">
+        <!-- 用户消息 -->
+        <div class="msg-user">
+          <span class="prompt">&gt;</span>
+          <div class="content">帮我写一个登录流程的 PRD，包含手机号 + 验证码、第三方登录、忘记密码三个流程。完成后整理到 02-prd/ 下，并更新索引。</div>
+        </div>
+
+        <!-- AI 响应（含 Mission Panel） -->
+        <div class="msg-ai">
+          <div class="ai-head">
+            <span class="label">AI Response</span>
+            <span class="meta">deepseek-v3 · streaming</span>
+            <span class="streaming-indicator">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </span>
+          </div>
+          <div class="content">
+            收到。我已分析项目结构，将创建 <code>02-prd/login.md</code>，包含三个流程的需求规格。同时整理 <code>_index.md</code> 并记入项目记忆。
+          </div>
+
+          <!-- Mission Panel: EXECUTING 状态 -->
+          <div class="mission-panel">
+            <div class="corner tl"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 14 L 0 0 L 14 0" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner tr"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 14 0 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner bl"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 0 14 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner br"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 14 0 L 14 14 L 0 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+
+            <div class="mission-head">
+              <div class="head-top">
+                <span class="title">◢ MISSION · 撰写登录 PRD</span>
+              </div>
+              <div class="head-meta">
+                STATUS: <span class="eta">EXECUTING</span>
+                <span class="separator">·</span>
+                STEP 3/5
+                <span class="separator">·</span>
+                ETA <span class="eta">2m 30s</span>
+              </div>
+            </div>
+
+            <div class="mission-steps">
+              <div class="step done">
+                <span class="index">01</span>
+                <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" fill="none"/></svg></span>
+                <span class="content">读取项目目的与现有 PRD</span>
+              </div>
+              <div class="step done">
+                <span class="index">02</span>
+                <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" fill="none"/></svg></span>
+                <span class="content">分析三种登录方式的规格差异</span>
+              </div>
+              <div class="step current">
+                <span class="index">03</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M 3 2 L 10 6 L 3 10 Z"/></svg></span>
+                <span class="content">生成 02-prd/login.md</span>
+                <span class="current-tag">CURRENT</span>
+              </div>
+              <div class="step-substeps">
+                <div class="sub">Drafting structure...</div>
+                <div class="sub">Token: <span class="progress">1.2k / 8k</span></div>
+              </div>
+              <div class="step pending">
+                <span class="index">04</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3.5" stroke="currentColor" stroke-width="1.25"/></svg></span>
+                <span class="content">更新 _index.md</span>
+              </div>
+              <div class="step pending">
+                <span class="index">05</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3.5" stroke="currentColor" stroke-width="1.25"/></svg></span>
+                <span class="content">记入项目记忆</span>
+              </div>
+            </div>
+
+            <div class="mission-actions">
+              <button class="mission-btn pause">PAUSE</button>
+              <button class="mission-btn override">OVERRIDE</button>
+              <button class="mission-btn abort">ABORT</button>
+            </div>
+          </div>
+
+          <!-- Tool calls -->
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">read_file</span>
+            <span class="args">("01-purpose.md")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[12ms]</span>
+          </div>
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">list_section</span>
+            <span class="args">("prd")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[8ms]</span>
+          </div>
+          <div class="tool-call">
+            <span class="arrow">▶</span>
+            <span class="name">propose_edit</span>
+            <span class="args">("02-prd/login.md", ...)</span>
+            <span class="status" style="color:var(--accent-cyan);">RUNNING</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper focused">
+          <div class="input-box" contenteditable="false" data-placeholder="输入指令...   长按 SPACE 语音"></div>
+          <div class="input-controls">
+            <span class="hint"><kbd>↵</kbd> SEND <kbd>⇧↵</kbd> NEW LINE <kbd>⌘ I</kbd> OVERRIDE <kbd>⌘ .</kbd> ABORT</span>
+            <button class="mic-btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <path d="M 3 8 C 3 11 5.2 13 8 13 C 10.8 13 13 11 13 8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="send-btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M 2 14 L 14 8 L 2 2 L 4 8 L 2 14 Z M 4 8 L 11 8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" fill="none"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOC PANEL -->
+    <div class="doc-panel">
+      <div class="doc-head">
+        <span class="hud-label">Doc Viewer</span>
+      </div>
+      <div class="doc-tabs">
+        <div class="doc-tab active">
+          <span style="color:var(--accent-cyan);">◆</span>
+          02-prd/login.md
+        </div>
+        <div class="doc-tab">
+          <span style="color:var(--text-muted);">◇</span>
+          00-home.md
+        </div>
+      </div>
+      <div class="doc-content">
+        <h1>登录系统 PRD</h1>
+        <h3>项目目的</h3>
+        <p>整合现有三种登录入口（手机号验证码、第三方账号、密码登录），降低用户首次进入的摩擦，并为后续企业账户体系扩展预留接口。</p>
+
+        <h2>登录方式 1 · 手机号 + 验证码</h2>
+        <p>主要面向 C 端首次注册用户。流程包含：输入手机号 → 发送验证码（60s 节流） → 校验 → 自动注册或登录。</p>
+        <ul>
+          <li>验证码长度 6 位数字</li>
+          <li>有效期 5 分钟</li>
+          <li>同手机号 1 分钟内最多发送 1 次</li>
+        </ul>
+
+        <h2>登录方式 2 · 第三方登录</h2>
+        <p>支持微信、Apple、Google 三种 SSO 入口。优先打通微信生态。</p>
+
+        <div class="key-decision">
+          <span class="label">◆ Key Decision</span>
+          首次登录的第三方账号需要绑定手机号，否则无法访问支付相关功能。
+        </div>
+
+        <h2>登录方式 3 · 忘记密码</h2>
+        <p>独立流程，通过手机号 + 验证码重置密码。重置后所有设备需重新登录。</p>
+      </div>
+      <div class="doc-bottom">
+        <button class="doc-btn">EDIT</button>
+        <button class="doc-btn">COPY</button>
+        <button class="doc-btn">EXPORT</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+      <div class="status">
+        <span class="led"></span>
+        <span>AI EXECUTING</span>
+      </div>
+      <span class="separator">·</span>
+      <div class="meta"><span class="num">5</span> STEPS PLANNED</div>
+      <span class="separator">·</span>
+      <div class="meta"><span class="num">2</span> COMPLETE</div>
+      <span class="separator">·</span>
+      <div class="meta">ETA <span class="num" style="color:var(--accent-cyan);">2m 30s</span></div>
+      <span class="spacer"></span>
+      <div class="right-meta">
+        <span>SESSION 1 OF 1</span>
+        <span class="separator">·</span>
+        <span>14:23:08</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCREEN 03: WORKSPACE · PLANNING MODE
+     ==================================================================== -->
+<div class="screen" data-screen="workspace-planning">
+  <div class="workspace">
+    <div class="top-bar">
+      <div class="brand">
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="3" fill="none" opacity="0.5"/>
+          <circle cx="32" cy="32" r="11" stroke="currentColor" stroke-width="3" fill="none"/>
+          <circle cx="32" cy="32" r="5" fill="currentColor"/>
+        </svg>
+        PLUG
+      </div>
+      <div class="project-info">
+        <span class="label">Project</span>
+        <span class="name">登录系统重构</span>
+      </div>
+      <div class="sync-display" style="background:rgba(157, 92, 255, 0.08);border-color:rgba(157, 92, 255, 0.25);">
+        <span class="hud-label" style="color:var(--accent-violet);">SYNC</span>
+        <span class="value" style="color:var(--accent-violet);">62</span>
+        <span class="hud-label" style="color:var(--text-secondary);font-size:9px;">%</span>
+      </div>
+      <div class="controls">
+        <button class="top-btn">
+          <span style="color:var(--accent-violet);">◆</span>
+          DEEPSEEK-R1
+          <span class="arrow">▼</span>
+        </button>
+        <button class="top-btn mode-plan">
+          <span>PLAN</span>
+          <span class="arrow">▼</span>
+        </button>
+        <button class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M 8 1.5 V 3.5 M 8 12.5 V 14.5 M 1.5 8 H 3.5 M 12.5 8 H 14.5 M 3.4 3.4 L 4.8 4.8 M 11.2 11.2 L 12.6 12.6 M 3.4 12.6 L 4.8 11.2 M 11.2 4.8 L 12.6 3.4" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-section">
+        <div class="nav-head"><span class="hud-label">Mission Sections</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">主页</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">项目目的</span></div>
+        <div class="nav-item active" style="color:var(--accent-violet);">
+          <span class="diamond-icon"></span><span class="name">PRD</span>
+        </div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">设计</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">代码</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">知识仓库</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">交付物</span></div>
+      </div>
+      <div class="nav-gauges">
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor" style="color:var(--accent-violet);"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Plan Tools</span>
+            <span class="gauge-value" style="color:var(--accent-violet);">4 READ</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Token</span>
+            <span class="gauge-value cyan">18.1k / 64k</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Reasoning</span>
+            <span class="gauge-value" style="color:var(--accent-violet);">DEEP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="session-switcher">
+        <div class="session-current">
+          <span style="color:var(--accent-violet);font-size:10px;">◆</span>
+          <span class="name">规划会议 · 登录重构</span>
+          <span class="arrow">▼</span>
+        </div>
+        <button class="new-session-btn">+ NEW SESSION</button>
+      </div>
+
+      <div class="conversation">
+        <div class="msg-user">
+          <span class="prompt">&gt;</span>
+          <div class="content">在动手写之前，先帮我规划一下这次登录重构需要哪些工作，分阶段告诉我每个阶段产出什么、需要多久。</div>
+        </div>
+
+        <div class="msg-ai">
+          <div class="ai-head">
+            <span class="label" style="color:var(--accent-violet);">AI Reasoning · PLAN</span>
+            <span class="meta">deepseek-r1 · thinking</span>
+          </div>
+          <div class="content" style="border-left-color:var(--accent-violet);">
+            基于读取的 <code>01-purpose.md</code>、<code>_index.md</code>，以及现有 PRD 草稿，规划如下三阶段方案。当前 <span style="color:var(--accent-violet);">PLAN 模式</span>，仅做规划，不会执行写操作。
+          </div>
+
+          <div class="mission-panel" style="border-color:var(--accent-violet);box-shadow:0 0 12px rgba(157, 92, 255, 0.25);">
+            <div class="corner tl" style="color:var(--accent-violet);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 14 L 0 0 L 14 0" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner tr" style="color:var(--accent-violet);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 14 0 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner bl" style="color:var(--accent-violet);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 0 14 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner br" style="color:var(--accent-violet);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 14 0 L 14 14 L 0 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+
+            <div class="mission-head">
+              <div class="head-top">
+                <span class="title" style="color:var(--accent-violet);">◢ PROPOSED PLAN · 登录重构</span>
+              </div>
+              <div class="head-meta">
+                MODE: <span style="color:var(--accent-violet);">PLAN ONLY</span>
+                <span class="separator">·</span>
+                3 PHASES
+                <span class="separator">·</span>
+                EST. <span style="color:var(--accent-violet);">2 WEEKS</span>
+              </div>
+            </div>
+
+            <div class="mission-steps">
+              <div class="step" style="color:var(--accent-violet);">
+                <span class="index">P1</span>
+                <span class="icon" style="color:var(--accent-violet);"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M 6 1 L 11 6 L 6 11 L 1 6 Z"/></svg></span>
+                <span class="content">PRD 撰写 · 三种登录方式 + 错误处理 + 数据埋点（3 天）</span>
+              </div>
+              <div class="step" style="color:var(--accent-violet);">
+                <span class="index">P2</span>
+                <span class="icon" style="color:var(--accent-violet);"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M 6 1 L 11 6 L 6 11 L 1 6 Z"/></svg></span>
+                <span class="content">设计稿 · 三套主流程 + 异常态 + 提示文案（4 天）</span>
+              </div>
+              <div class="step" style="color:var(--accent-violet);">
+                <span class="index">P3</span>
+                <span class="icon" style="color:var(--accent-violet);"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M 6 1 L 11 6 L 6 11 L 1 6 Z"/></svg></span>
+                <span class="content">研发对接 · 接口定义 + 拆任务到 Jira（3 天）</span>
+              </div>
+              <div class="step pending">
+                <span class="index">--</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3.5" stroke="currentColor" stroke-width="1.25"/></svg></span>
+                <span class="content">QA / 灰度 / 上线在 P3 完成后规划</span>
+              </div>
+            </div>
+
+            <div class="mission-actions">
+              <button class="mission-btn" style="border-color:var(--accent-violet);color:var(--accent-violet);">REFINE</button>
+              <button class="mission-btn" style="border-color:var(--accent-green);color:var(--accent-green);">APPROVE → EXECUTE</button>
+              <button class="mission-btn abort">DISCARD</button>
+            </div>
+          </div>
+
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">read_file</span>
+            <span class="args">("01-purpose.md")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[14ms]</span>
+          </div>
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">list_section</span>
+            <span class="args">("prd")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[9ms]</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-box" contenteditable="false" data-placeholder="规划反馈或继续追问... (PLAN 模式下 AI 不会执行写操作)"></div>
+          <div class="input-controls">
+            <span class="hint" style="color:var(--accent-violet);">PLAN MODE · 仅读取与规划，不写文件</span>
+            <button class="mic-btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <path d="M 3 8 C 3 11 5.2 13 8 13 C 10.8 13 13 11 13 8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="send-btn" style="border-color:var(--accent-violet);color:var(--accent-violet);background:rgba(157,92,255,0.08);">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M 2 14 L 14 8 L 2 2 L 4 8 L 2 14 Z M 4 8 L 11 8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" fill="none"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-panel">
+      <div class="doc-head"><span class="hud-label">Doc Viewer</span></div>
+      <div class="doc-tabs">
+        <div class="doc-tab active">
+          <span style="color:var(--accent-violet);">◆</span>
+          02-prd/_index.md
+        </div>
+      </div>
+      <div class="doc-content">
+        <h1>PRD 索引</h1>
+        <p style="color:var(--text-secondary);font-style:italic;font-size:12px;">此文件由 AI 自动维护，请勿手动编辑。</p>
+
+        <h3>概况</h3>
+        <ul>
+          <li>文档数：<code>3</code></li>
+          <li>最近更新：<code>2026-05-20</code></li>
+          <li>阶段：<code>规划中</code></li>
+        </ul>
+
+        <h3>文档列表</h3>
+        <ul>
+          <li><code>login.md</code> — 登录流程 PRD（草稿，待补充）</li>
+          <li><code>account-binding.md</code> — 账户绑定规则</li>
+          <li><code>error-states.md</code> — 异常态文案</li>
+        </ul>
+
+        <h3>最近变更</h3>
+        <ul>
+          <li>2026-05-20: 新增 error-states 草稿</li>
+          <li>2026-05-18: login.md 完善验证码节流规则</li>
+          <li>2026-05-15: 创建 PRD 区</li>
+        </ul>
+      </div>
+      <div class="doc-bottom">
+        <button class="doc-btn">EDIT</button>
+        <button class="doc-btn">COPY</button>
+        <button class="doc-btn">EXPORT</button>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="status" style="color:var(--accent-violet);">
+        <span class="led" style="background:var(--accent-violet);box-shadow:0 0 12px rgba(157, 92, 255, 0.4);"></span>
+        <span>PLAN MODE</span>
+      </div>
+      <span class="separator">·</span>
+      <div class="meta">READ TOOLS ONLY <span class="num" style="color:var(--accent-violet);">4</span> AVAILABLE</div>
+      <span class="separator">·</span>
+      <div class="meta">DEEP REASONING <span class="num" style="color:var(--accent-violet);">ON</span></div>
+      <span class="spacer"></span>
+      <div class="right-meta">
+        <span>SESSION 1 OF 1</span>
+        <span class="separator">·</span>
+        <span>15:08:42</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCREEN 04: WORKSPACE · MISSION PAUSED / AWAITING APPROVAL
+     ==================================================================== -->
+<div class="screen" data-screen="workspace-awaiting">
+  <div class="workspace">
+    <div class="top-bar">
+      <div class="brand">
+        <svg width="16" height="16" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="3" fill="none" opacity="0.5"/>
+          <circle cx="32" cy="32" r="11" stroke="currentColor" stroke-width="3" fill="none"/>
+          <circle cx="32" cy="32" r="5" fill="currentColor"/>
+        </svg>
+        PLUG
+      </div>
+      <div class="project-info">
+        <span class="label">Project</span>
+        <span class="name">登录系统重构</span>
+      </div>
+      <div class="sync-display" style="background:var(--status-waiting);border-color:rgba(245, 158, 11, 0.3);">
+        <span class="hud-label" style="color:var(--accent-amber);">SYNC</span>
+        <span class="value" style="color:var(--accent-amber);">71</span>
+        <span class="hud-label" style="color:var(--text-secondary);font-size:9px;">%</span>
+      </div>
+      <div class="controls">
+        <button class="top-btn">
+          <span style="color:var(--accent-cyan);font-size:9px;">◆</span>
+          DEEPSEEK-V3
+          <span class="arrow">▼</span>
+        </button>
+        <button class="top-btn">
+          <span>EXECUTE</span>
+          <span class="arrow">▼</span>
+        </button>
+        <button class="icon-btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M 8 1.5 V 3.5 M 8 12.5 V 14.5 M 1.5 8 H 3.5 M 12.5 8 H 14.5 M 3.4 3.4 L 4.8 4.8 M 11.2 11.2 L 12.6 12.6 M 3.4 12.6 L 4.8 11.2 M 11.2 4.8 L 12.6 3.4" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-section">
+        <div class="nav-head"><span class="hud-label">Mission Sections</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">主页</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">项目目的</span></div>
+        <div class="nav-item active">
+          <span class="diamond-icon"></span><span class="name">PRD</span>
+          <span class="status-dot" style="background:var(--accent-amber);box-shadow:var(--glow-amber);"></span>
+        </div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">设计</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">代码</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">知识仓库</span></div>
+        <div class="nav-item"><span class="diamond-icon"></span><span class="name">交付物</span></div>
+      </div>
+      <div class="nav-gauges">
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">MCP</span>
+            <span class="gauge-value green">3/5 ACT</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Token</span>
+            <span class="gauge-value cyan">28.7k / 64k</span>
+          </div>
+        </div>
+        <div class="gauge">
+          <svg class="hex-icon" viewBox="0 0 14 14" fill="currentColor" style="color:var(--accent-amber);"><path d="M 7 1 L 12.196 4 L 12.196 10 L 7 13 L 1.804 10 L 1.804 4 Z"/></svg>
+          <div class="gauge-info">
+            <span class="gauge-label">Pending</span>
+            <span class="gauge-value" style="color:var(--accent-amber);">1 APPROVAL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="session-switcher">
+        <div class="session-current">
+          <span style="color:var(--accent-amber);font-size:10px;">◆</span>
+          <span class="name">PRD 撰写 #001</span>
+          <span class="arrow">▼</span>
+        </div>
+        <button class="new-session-btn">+ NEW SESSION</button>
+      </div>
+
+      <div class="conversation">
+        <div class="msg-user">
+          <span class="prompt">&gt;</span>
+          <div class="content">把 login.md 用新的三种登录方式重写，并且把旧的 backup 到 _archive 目录。</div>
+        </div>
+
+        <div class="msg-ai">
+          <div class="ai-head">
+            <span class="label" style="color:var(--accent-amber);">AI Response · PAUSED</span>
+            <span class="meta">awaiting pilot decision</span>
+          </div>
+          <div class="content" style="border-left-color:var(--accent-amber);">
+            已分析现有 <code>login.md</code> 内容（共 1247 字，3 个章节）。准备重写并 backup，但**此操作涉及删除原文件**，需要授权。
+          </div>
+
+          <!-- Mission Panel: AWAITING APPROVAL 状态 -->
+          <div class="mission-panel paused">
+            <div class="corner tl"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 14 L 0 0 L 14 0" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner tr"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 14 0 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner bl"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 0 14 L 14 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="corner br"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M 14 0 L 14 14 L 0 14" stroke="currentColor" stroke-width="1.5"/></svg></div>
+
+            <div class="mission-head">
+              <div class="head-top">
+                <span class="title">◢ MISSION · 重写登录 PRD</span>
+              </div>
+              <div class="head-meta">
+                STATUS: <span class="eta">PAUSED · AWAITING APPROVAL</span>
+                <span class="separator">·</span>
+                STEP 3/5
+              </div>
+            </div>
+
+            <div class="mission-steps">
+              <div class="step done">
+                <span class="index">01</span>
+                <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+                <span class="content">读取并分析现有 login.md</span>
+              </div>
+              <div class="step done">
+                <span class="index">02</span>
+                <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+                <span class="content">生成 _archive 目录与备份文件</span>
+              </div>
+              <div class="step waiting">
+                <span class="index">03</span>
+                <span class="icon"><svg viewBox="0 0 16 16" fill="none"><path d="M 8 2 L 14.5 13 L 1.5 13 Z" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="8" y1="6" x2="8" y2="9.5" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="11.2" r="0.7" fill="currentColor"/></svg></span>
+                <span class="content">删除原 login.md 并写入新版本</span>
+                <span class="current-tag" style="border-color:var(--accent-amber);color:var(--accent-amber);">REQUIRES APPROVAL</span>
+              </div>
+              <div class="step pending">
+                <span class="index">04</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3.5" stroke="currentColor" stroke-width="1.25"/></svg></span>
+                <span class="content">更新 _index.md</span>
+              </div>
+              <div class="step pending">
+                <span class="index">05</span>
+                <span class="icon"><svg viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="3.5" stroke="currentColor" stroke-width="1.25"/></svg></span>
+                <span class="content">记入项目记忆</span>
+              </div>
+            </div>
+
+            <div class="mission-actions">
+              <button class="mission-btn resume" id="trigger-modal">REVIEW &amp; DECIDE</button>
+              <button class="mission-btn abort">ABORT</button>
+            </div>
+          </div>
+
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">read_file</span>
+            <span class="args">("02-prd/login.md")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[11ms]</span>
+          </div>
+          <div class="tool-call success">
+            <span class="arrow">▶</span>
+            <span class="name">create_file</span>
+            <span class="args">("_archive/login-20260520.md")</span>
+            <span class="status"><svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;"><path d="M 2.5 7.5 L 5.5 10.5 L 11.5 3.5" stroke="currentColor" stroke-width="1.75" fill="none"/></svg></span>
+            <span class="duration">[18ms]</span>
+          </div>
+          <div class="tool-call pending">
+            <span class="arrow">▶</span>
+            <span class="name">delete_file</span>
+            <span class="args">("02-prd/login.md")</span>
+            <span class="status">⏸ AWAITING</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-box" contenteditable="false" data-placeholder="任务已暂停 · 请先审批或中止"></div>
+          <div class="input-controls">
+            <span class="hint" style="color:var(--accent-amber);">⚠ MISSION PAUSED · 需要 pilot 决策才能继续</span>
+            <button class="mic-btn" style="opacity:0.4;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <path d="M 3 8 C 3 11 5.2 13 8 13 C 10.8 13 13 11 13 8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="send-btn" style="opacity:0.4;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M 2 14 L 14 8 L 2 2 L 4 8 L 2 14 Z M 4 8 L 11 8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-panel">
+      <div class="doc-head"><span class="hud-label">Doc Viewer · Diff</span></div>
+      <div class="doc-tabs">
+        <div class="doc-tab active" style="color:var(--accent-amber);">
+          <span style="color:var(--accent-amber);">⚠</span>
+          02-prd/login.md (modified)
+        </div>
+      </div>
+      <div class="doc-content">
+        <h3 style="color:var(--accent-amber);">Proposed Changes</h3>
+        <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-void);border:1px solid var(--border-default);border-radius:2px;padding:10px;">
+          <div style="color:var(--accent-red);"><span style="opacity:0.5;">-</span> 旧版本 · 1247 字 · 3 章节</div>
+          <div style="color:var(--accent-red);"><span style="opacity:0.5;">-</span> # 用户登录</div>
+          <div style="color:var(--accent-red);"><span style="opacity:0.5;">-</span> ## 1. 手机号登录</div>
+          <div style="color:var(--accent-red);"><span style="opacity:0.5;">-</span> ## 2. 邮箱登录</div>
+          <div style="color:var(--accent-red);"><span style="opacity:0.5;">-</span> ## 3. 找回密码</div>
+          <div style="color:var(--text-muted);">...</div>
+          <div style="height:8px;"></div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> 新版本 · 2104 字 · 5 章节 + 3 异常态</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> # 登录系统 PRD</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 项目目的</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 1. 手机号 + 验证码</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 2. 第三方登录</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 3. 忘记密码</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 错误处理</div>
+          <div style="color:var(--accent-green);"><span style="opacity:0.5;">+</span> ## 数据埋点</div>
+        </div>
+
+        <div class="key-decision" style="background:var(--status-waiting);border-left-color:var(--accent-amber);margin-top:14px;">
+          <span class="label" style="color:var(--accent-amber);">⚠ Requires Pilot Decision</span>
+          原文件将被备份至 <code>_archive/login-20260520.md</code> 后覆盖。Backup 已完成（步骤 02），等待你授权步骤 03 的删除 + 写入操作。
+        </div>
+      </div>
+      <div class="doc-bottom">
+        <button class="doc-btn">VIEW FULL DIFF</button>
+        <button class="doc-btn" style="border-color:var(--accent-amber);color:var(--accent-amber);">RESTORE BACKUP</button>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="status" style="color:var(--accent-amber);">
+        <span class="led" style="background:var(--accent-amber);box-shadow:var(--glow-amber);"></span>
+        <span>AWAITING APPROVAL</span>
+      </div>
+      <span class="separator">·</span>
+      <div class="meta"><span class="num">5</span> STEPS · <span class="num">2</span> COMPLETE · 1 BLOCKED</div>
+      <span class="separator">·</span>
+      <div class="meta">⌘ R TO REVIEW · ESC TO ABORT</div>
+      <span class="spacer"></span>
+      <div class="right-meta">
+        <span>SESSION 1 OF 1</span>
+        <span class="separator">·</span>
+        <span>15:32:11</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     SCREEN 05: DECISION MODAL OVERLAY
+     ==================================================================== -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <div class="corner tl"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M 0 14 L 0 0 L 14 0" stroke="currentColor" stroke-width="2"/></svg></div>
+    <div class="corner tr"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 14 0 L 14 14" stroke="currentColor" stroke-width="2"/></svg></div>
+    <div class="corner bl"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M 0 0 L 0 14 L 14 14" stroke="currentColor" stroke-width="2"/></svg></div>
+    <div class="corner br"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M 14 0 L 14 14 L 0 14" stroke="currentColor" stroke-width="2"/></svg></div>
+
+    <div class="modal-header">
+      <svg class="warning-icon" viewBox="0 0 16 16" fill="none">
+        <path d="M 8 2 L 14.5 13 L 1.5 13 Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <line x1="8" y1="6" x2="8" y2="9.5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="8" cy="11.2" r="0.7" fill="currentColor"/>
+      </svg>
+      <div class="title">⚠ REQUIRES PILOT AUTHORIZATION</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="row">
+        <span class="label">AI Proposes</span>
+        <span class="value">delete_file("02-prd/login.md")</span>
+      </div>
+      <div class="row">
+        <span class="label">Then</span>
+        <span class="value">create_file("02-prd/login.md", &lt;new content&gt;)</span>
+      </div>
+      <div class="row">
+        <span class="label">Reason</span>
+        <span class="value normal">原文件已经备份至 <code style="color:var(--accent-cyan);font-family:var(--font-mono);">_archive/login-20260520.md</code>。新版本扩充了第三方登录的规格、增加了 5 个异常态文案与 8 个埋点定义，结构由 3 章重组为 5 章 + 附录。覆盖原文件以保持 PRD 单一来源。</span>
+      </div>
+      <span class="diff-link">▶ VIEW FULL DIFF (1247 → 2104 chars)</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="action approve" id="modal-approve">
+        <span class="keycap" style="background:rgba(5,8,13,0.3);color:var(--bg-void);border-color:var(--bg-void);">Y</span>
+        APPROVE
+      </button>
+      <button class="action reject" id="modal-reject">
+        <span class="keycap">N</span>
+        REJECT
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================================================================
+     INTERACTIVITY
+     ==================================================================== -->
+<script>
+// View switcher
+const switcher = document.querySelector('.demo-switcher');
+const screens = document.querySelectorAll('.screen');
+const modalBackdrop = document.getElementById('modal-backdrop');
+let currentViewBeforeModal = 'launcher';
+
+switcher.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.view;
+    const isModal = btn.dataset.modal === 'true';
+
+    if (isModal) {
+      modalBackdrop.classList.add('active');
+      switcher.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    } else {
+      modalBackdrop.classList.remove('active');
+      switcher.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      screens.forEach(s => {
+        s.classList.toggle('active', s.dataset.screen === view);
+      });
+      currentViewBeforeModal = view;
+    }
+  });
+});
+
+// Modal trigger from workspace-awaiting screen
+document.getElementById('trigger-modal')?.addEventListener('click', () => {
+  modalBackdrop.classList.add('active');
+});
+document.getElementById('modal-approve')?.addEventListener('click', () => {
+  modalBackdrop.classList.remove('active');
+});
+document.getElementById('modal-reject')?.addEventListener('click', () => {
+  modalBackdrop.classList.remove('active');
+});
+
+// Keyboard: Y/N when modal open, Esc to close
+document.addEventListener('keydown', (e) => {
+  if (!modalBackdrop.classList.contains('active')) return;
+  if (e.key === 'y' || e.key === 'Y') modalBackdrop.classList.remove('active');
+  if (e.key === 'n' || e.key === 'N') modalBackdrop.classList.remove('active');
+  if (e.key === 'Escape') modalBackdrop.classList.remove('active');
+});
+
+// SYNC 数值微跳（演示用，每 3s 微变 ±1）
+setInterval(() => {
+  const syncEl = document.getElementById('sync-num');
+  if (!syncEl) return;
+  const current = parseInt(syncEl.textContent);
+  const delta = Math.random() > 0.5 ? 1 : -1;
+  syncEl.textContent = Math.max(82, Math.min(91, current + delta));
+}, 3000);
+</script>
+
+</body>
+</html>

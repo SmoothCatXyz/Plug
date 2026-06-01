@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Alma Agent — Functional Architecture</title>
+<style>
+  :root {
+    --bg: #05080d;
+    --panel: #0a0e14;
+    --elevated: #11161f;
+    --cyan: #00d9ff;
+    --cyan-dim: rgba(0,217,255,0.12);
+    --cyan-glow: rgba(0,217,255,0.35);
+    --amber: #f59e0b;
+    --green: #10f4b1;
+    --violet: #9d5cff;
+    --red: #ff3b30;
+    --text: #e5f2ff;
+    --muted: #4a5868;
+    --secondary: #7b8ea3;
+    --border: #1f2937;
+    --border-strong: #2d3b4f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+    min-height: 100vh;
+    padding: 40px 32px;
+    overflow-x: hidden;
+    background-image:
+      repeating-linear-gradient(180deg, transparent 0, transparent 2px, rgba(0,0,0,.06) 2px, rgba(0,0,0,.06) 3px),
+      linear-gradient(rgba(0,217,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,217,255,.03) 1px, transparent 1px);
+    background-size: auto, 40px 40px, 40px 40px;
+  }
+
+  /* ── Header ── */
+  .arch-header {
+    text-align: center;
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .arch-header::after {
+    content: "";
+    display: block;
+    height: 1px;
+    margin-top: 20px;
+    background: linear-gradient(90deg, transparent, var(--cyan) 30%, var(--cyan) 70%, transparent);
+    opacity: .4;
+  }
+  .arch-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .arch-subtitle {
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: .15em;
+    color: var(--secondary);
+    text-transform: uppercase;
+  }
+
+  /* ── Layer grid ── */
+  .arch-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ── Layer label ── */
+  .layer-wrap {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .layer-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    padding: 8px 4px;
+  }
+
+  /* ── Layer card ── */
+  .layer {
+    position: relative;
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    padding: 16px 20px;
+  }
+  .layer::before, .layer::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+  }
+  .layer::before {
+    top: 0; left: 0;
+    border-top: 1.5px solid var(--layer-color, var(--cyan));
+    border-left: 1.5px solid var(--layer-color, var(--cyan));
+  }
+  .layer::after {
+    bottom: 0; right: 0;
+    border-bottom: 1.5px solid var(--layer-color, var(--cyan));
+    border-right: 1.5px solid var(--layer-color, var(--cyan));
+  }
+
+  .layer--ui    { --layer-color: var(--cyan); }
+  .layer--core  { --layer-color: var(--violet); }
+  .layer--tools { --layer-color: var(--green); }
+  .layer--data  { --layer-color: var(--amber); }
+  .layer--infra { --layer-color: var(--secondary); }
+
+  .layer__title {
+    font-size: 9px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--layer-color, var(--cyan));
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Nodes ── */
+  .nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .node {
+    position: relative;
+    border: 1px solid var(--border-strong);
+    background: var(--elevated);
+    padding: 10px 14px;
+    min-width: 140px;
+    transition: border-color .15s, box-shadow .15s;
+    cursor: default;
+  }
+  .node:hover {
+    border-color: var(--node-accent, var(--cyan));
+    box-shadow: 0 0 12px var(--node-glow, rgba(0,217,255,.2));
+  }
+  .node--primary { --node-accent: var(--cyan); --node-glow: rgba(0,217,255,.2); }
+  .node--violet  { --node-accent: var(--violet); --node-glow: rgba(157,92,255,.2); }
+  .node--green   { --node-accent: var(--green); --node-glow: rgba(16,244,177,.2); }
+  .node--amber   { --node-accent: var(--amber); --node-glow: rgba(245,158,11,.2); }
+  .node--red     { --node-accent: var(--red); --node-glow: rgba(255,59,48,.2); }
+  .node--muted   { --node-accent: var(--secondary); --node-glow: rgba(123,142,163,.15); }
+
+  .node__icon {
+    font-size: 16px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .node__name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--text);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .node__desc {
+    font-size: 9px;
+    color: var(--secondary);
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  .node__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 7px;
+  }
+  .tag {
+    font-size: 8px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 2px 5px;
+    border: 1px solid var(--node-accent, var(--border-strong));
+    color: var(--node-accent, var(--secondary));
+    white-space: nowrap;
+  }
+
+  /* badge for node counts */
+  .node__badge {
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    font-size: 8px;
+    letter-spacing: .1em;
+    color: var(--node-accent, var(--cyan));
+    border: 1px solid var(--node-accent, var(--cyan));
+    background: var(--bg);
+    padding: 1px 5px;
+  }
+
+  /* ── Flow arrows between layers ── */
+  .flow-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 20px;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: .12em;
+  }
+  .flow-arrow svg { flex-shrink: 0; }
+
+  /* ── Tool grid (special 6-col) ── */
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .tool-node {
+    border: 1px solid var(--border);
+    background: var(--elevated);
+    padding: 8px 10px;
+    transition: border-color .15s, background .15s;
+  }
+  .tool-node:hover {
+    border-color: var(--green);
+    background: rgba(16,244,177,.05);
+  }
+  .tool-node__cat {
+    font-size: 8px;
+    letter-spacing: .12em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .tool-node__name {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .tool-node__tools {
+    font-size: 8px;
+    color: var(--secondary);
+    line-height: 1.6;
+  }
+
+  /* ── MCP partners ── */
+  .mcp-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .mcp-item {
+    border: 1px solid var(--border);
+    padding: 8px;
+    text-align: center;
+    font-size: 9px;
+    color: var(--secondary);
+    transition: border-color .15s;
+  }
+  .mcp-item:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .mcp-item__icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+  /* ── Provider row ── */
+  .provider-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .provider-pill {
+    font-size: 9px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--border-strong);
+    color: var(--secondary);
+    transition: border-color .15s;
+  }
+  .provider-pill:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  /* ── Data flow connector ── */
+  .connector {
+    position: relative;
+    margin: 4px 0;
+    padding-left: 20px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: .1em;
+  }
+  .connector::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--cyan);
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--secondary);
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid var(--color);
+  }
+
+  /* ── Phase badges ── */
+  .phase-badge {
+    display: inline-block;
+    font-size: 8px;
+    letter-spacing: .1em;
+    padding: 1px 5px;
+    background: rgba(245,158,11,.1);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .phase-badge--mvp {
+    background: rgba(0,217,255,.08);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* pulse animation on key nodes */
+  @keyframes pulse-border {
+    0%, 100% { opacity: .6; }
+    50% { opacity: 1; }
+  }
+  .node--pulse { animation: pulse-border 2.4s ease-in-out infinite; }
+
+  /* ── Section divider inside layer ── */
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+  }
+  .section-label {
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="arch-header">
+  <div class="arch-title">Alma Agent — Functional Architecture</div>
+  <div class="arch-subtitle">Based on Plug-Spec §6 · §10 competitive baseline analysis · 2026</div>
+</div>
+
+<div class="arch-layers">
+
+  <!-- ══════════ LAYER 1: UI ══════════ -->
+  <div class="layer-wrap">
+    <div class="layer-label" style="color:#00d9ff; border-color:#00d9ff22;">UI</div>
+    <div class="layer layer--ui">
+      <div class="layer__title">User Interface Layer</div>
+      <div class="nodes">
+        <div class="node node--primary">
+          <div class="node__icon">💬</div>
+          <div class="node__name">Chat Window</div>
+          <div class="node__desc">Real-time streaming<br>Tool event feed inline<br>Multi-session tabs</div>
+          <div class="node__tags"><span class="tag">streaming SSE</span><span class="tag">MVP</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">🎨</div>
+          <div class="node__name">Artifacts Renderer</div>
+          <div class="node__desc">HTML · React · Mermaid<br>SVG · Data Table<br>iframe sandbox</div>
+          <div class="node__tags"><span class="tag">esbuild-wasm</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">⚡</div>
+          <div class="node__name">Prompt Apps</div>
+          <div class="node__desc">Reusable templates<br>Custom input fields<br>Global shortcuts</div>
+          <div class="node__tags"><span class="tag">输出归档</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">🧠</div>
+          <div class="node__name">Memory Browser</div>
+          <div class="node__desc">memory.md viewer<br>Semantic search UI<br>Cross-session recall</div>
+          <div class="node__tags"><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">🔑</div>
+          <div class="node__name">Skills UI</div>
+          <div class="node__desc">Skills loader display<br>Marketplace browser<br>Activation state</div>
+          <div class="node__tags"><span class="tag">3-layer</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">🎛</div>
+          <div class="node__name">Mission Panel</div>
+          <div class="node__desc">Live tool trace<br>PAUSE / ABORT<br>Approval diff view</div>
+          <div class="node__tags"><span class="tag">real-time</span><span class="tag">MVP</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="flow-arrow">
+    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 0v10M2 6l4 4 4-4" stroke="#4a5868" stroke-width="1.5" fill="none"/></svg>
+    <span>IPC / Event Bus</span>
+  </div>
+
+  <!-- ══════════ LAYER 2: AGENT CORE ══════════ -->
+  <div class="layer-wrap">
+    <div class="layer-label" style="color:#9d5cff; border-color:#9d5cff22;">CORE</div>
+    <div class="layer layer--core">
+      <div class="layer__title">Agent Core</div>
+      <div class="nodes">
+        <div class="node node--violet node--pulse">
+          <div class="node__badge">Chat</div>
+          <div class="node__icon">🤖</div>
+          <div class="node__name">Chat Model</div>
+          <div class="node__desc">Main conversation<br>High capability<br>Claude / DeepSeek R1</div>
+          <div class="node__tags"><span class="tag">Opus 4</span><span class="tag">Reasoner</span><span class="tag">GPT-4o</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__badge">Tool</div>
+          <div class="node__icon">⚙️</div>
+          <div class="node__name">Tool Model</div>
+          <div class="node__desc">Background tasks<br>Fast &amp; cheap<br>Title gen / classify</div>
+          <div class="node__tags"><span class="tag">Haiku</span><span class="tag">Flash</span><span class="tag">mini</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">🏗</div>
+          <div class="node__name">Context Builder</div>
+          <div class="node__desc">Injects memory<br>Loads rules.md<br>Section summaries<br>Semantic top-k</div>
+          <div class="node__tags"><span class="tag">token budget</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">🔄</div>
+          <div class="node__name">Agent Loop</div>
+          <div class="node__desc">Plan → Execute<br>Tool call dispatch<br>Result injection<br>Retry / abort</div>
+          <div class="node__tags"><span class="tag">Vercel AI SDK</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">📡</div>
+          <div class="node__name">Streaming Engine</div>
+          <div class="node__desc">SSE → IPC bridge<br>Token delta emit<br>Tool event stream</div>
+          <div class="node__tags"><span class="tag">real-time</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">🧩</div>
+          <div class="node__name">Extended Thinking</div>
+          <div class="node__desc">reasoning_effort<br>Thinking trace fold<br>Token split billing</div>
+          <div class="node__tags"><span class="tag">o-series</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">📂</div>
+          <div class="node__name">Session Manager</div>
+          <div class="node__desc">Multi-session tabs<br>Auto title gen<br>History persist</div>
+          <div class="node__tags"><span class="tag">SQLite</span><span class="tag">Drizzle</span></div>
+        </div>
+        <div class="node node--violet">
+          <div class="node__icon">🛡</div>
+          <div class="node__name">Authorization Gate</div>
+          <div class="node__desc">aiWrite levels<br>Diff preview<br>Y/N approval</div>
+          <div class="node__tags"><span class="tag">confirm</span><span class="tag">auto</span><span class="tag">readonly</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="flow-arrow">
+    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 0v10M2 6l4 4 4-4" stroke="#4a5868" stroke-width="1.5" fill="none"/></svg>
+    <span>Tool Registry dispatch</span>
+  </div>
+
+  <!-- ══════════ LAYER 3: TOOLS ══════════ -->
+  <div class="layer-wrap">
+    <div class="layer-label" style="color:#10f4b1; border-color:#10f4b122;">TOOLS</div>
+    <div class="layer layer--tools">
+      <div class="layer__title">Tool Registry — 20+ tools (MVP: 10, Phase 2: 20+)</div>
+      <div class="tool-grid">
+        <div class="tool-node">
+          <div class="tool-node__cat">📁 File System</div>
+          <div class="tool-node__name">FS Tools</div>
+          <div class="tool-node__tools">read_file<br>write_file<br>edit_file<br>delete_file<br>list_section</div>
+        </div>
+        <div class="tool-node">
+          <div class="tool-node__cat">🌐 Web</div>
+          <div class="tool-node__name">Web Tools</div>
+          <div class="tool-node__tools">web_search<br>web_fetch<br>— DuckDuckGo —<br>— HTML parse —<br>24k char limit</div>
+        </div>
+        <div class="tool-node">
+          <div class="tool-node__cat">🌍 Browser</div>
+          <div class="tool-node__name">Browser Tools</div>
+          <div class="tool-node__tools">browser_navigate<br>browser_click<br>browser_type<br>browser_screenshot<br>+ Chrome Relay</div>
+        </div>
+        <div class="tool-node">
+          <div class="tool-node__cat">🧠 Memory</div>
+          <div class="tool-node__name">Memory Tools</div>
+          <div class="tool-node__tools">read_memory<br>update_memory<br>search_memory<br>— bge embed —<br>— sqlite-vss —</div>
+        </div>
+        <div class="tool-node">
+          <div class="tool-node__cat">💻 Shell / Code</div>
+          <div class="tool-node__name">Exec Tools</div>
+          <div class="tool-node__tools">run_command<br>run_script<br>create_artifact<br>— sandbox —<br>Phase 2</div>
+        </div>
+        <div class="tool-node">
+          <div class="tool-node__cat">🔌 MCP Adapter</div>
+          <div class="tool-node__name">MCP Tools</div>
+          <div class="tool-node__tools">dynamic inject<br>stdio / HTTP<br>health check<br>confirm write<br>Phase 2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="flow-arrow">
+    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 0v10M2 6l4 4 4-4" stroke="#4a5868" stroke-width="1.5" fill="none"/></svg>
+    <span>Read / Write</span>
+  </div>
+
+  <!-- ══════════ LAYER 4: DATA & INTELLIGENCE ══════════ -->
+  <div class="layer-wrap">
+    <div class="layer-label" style="color:#f59e0b; border-color:#f59e0b22;">DATA</div>
+    <div class="layer layer--data">
+      <div class="layer__title">Data &amp; Intelligence Layer</div>
+      <div class="nodes">
+        <div class="node node--amber">
+          <div class="node__icon">📝</div>
+          <div class="node__name">Project Workspace</div>
+          <div class="node__desc">Markdown sections<br>rules.md · memory.md<br>_index.md per section</div>
+          <div class="node__tags"><span class="tag">00~06 dirs</span><span class="tag">MVP</span></div>
+        </div>
+        <div class="node node--amber">
+          <div class="node__icon">🔎</div>
+          <div class="node__name">Semantic Memory</div>
+          <div class="node__desc">SQLite + sqlite-vss<br>Local vector index<br>top-k retrieval</div>
+          <div class="node__tags"><span class="tag">bge-small-zh</span><span class="tag">384-dim</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--amber">
+          <div class="node__icon">🌐</div>
+          <div class="node__name">Embedding Models</div>
+          <div class="node__desc">bge-small-zh (local)<br>Voyage API<br>OpenAI / 阿里 embed</div>
+          <div class="node__tags"><span class="tag">transformers.js</span></div>
+        </div>
+        <div class="node node--amber">
+          <div class="node__icon">📦</div>
+          <div class="node__name">Skills System</div>
+          <div class="node__desc">Personal / Project<br>Marketplace (P3)<br>Claude Code compat</div>
+          <div class="node__tags"><span class="tag">SKILL.md</span><span class="tag">~/.plug/skills</span></div>
+        </div>
+        <div class="node node--amber">
+          <div class="node__icon">🗄</div>
+          <div class="node__name">Project Registry</div>
+          <div class="node__desc">projects.json<br>Multi-workspace<br>Status tracking</div>
+          <div class="node__tags"><span class="tag">~/.plug/</span><span class="tag">MVP</span></div>
+        </div>
+        <div class="node node--amber">
+          <div class="node__icon">⚡</div>
+          <div class="node__name">Prompt App Store</div>
+          <div class="node__desc">Built-in apps<br>Custom templates<br>Output routing</div>
+          <div class="node__tags"><span class="tag">PRD · 竞品 · RN</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrow -->
+  <div class="flow-arrow">
+    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 0v10M2 6l4 4 4-4" stroke="#4a5868" stroke-width="1.5" fill="none"/></svg>
+    <span>Network / External</span>
+  </div>
+
+  <!-- ══════════ LAYER 5: INFRASTRUCTURE ══════════ -->
+  <div class="layer-wrap">
+    <div class="layer-label" style="color:#7b8ea3; border-color:#7b8ea322;">INFRA</div>
+    <div class="layer layer--infra">
+      <div class="layer__title">Infrastructure &amp; Integrations</div>
+      <div class="nodes">
+        <div class="node node--muted">
+          <div class="node__icon">🔀</div>
+          <div class="node__name">Network Layer</div>
+          <div class="node__desc">HTTP / SOCKS5 proxy<br>Retry + backoff<br>Timeout control</div>
+          <div class="node__tags"><span class="tag">中国网络友好</span></div>
+        </div>
+        <div class="node node--muted">
+          <div class="node__icon">🤖</div>
+          <div class="node__name">LLM Providers</div>
+          <div class="node__desc">Claude / OpenAI<br>DeepSeek / Gemini<br>Ollama (local)</div>
+          <div class="node__tags"><span class="tag">multi-provider</span></div>
+        </div>
+        <div class="node node--primary">
+          <div class="node__icon">🌍</div>
+          <div class="node__name">Chrome Browser Relay</div>
+          <div class="node__desc">Chrome Extension<br>CDP + WebSocket<br>Real login state</div>
+          <div class="node__tags"><span class="tag">localhost:23001</span><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--muted">
+          <div class="node__icon">🔌</div>
+          <div class="node__name">MCP Servers</div>
+          <div class="node__desc">stdio / HTTP transport<br>Dynamic tool inject<br>Health monitoring</div>
+          <div class="node__tags"><span class="tag">Phase 2</span></div>
+        </div>
+        <div class="node node--muted">
+          <div class="node__icon">🗃</div>
+          <div class="node__name">Persistence</div>
+          <div class="node__desc">SQLite (Drizzle ORM)<br>Manifest / Sessions<br>Config store</div>
+          <div class="node__tags"><span class="tag">Electron userData</span></div>
+        </div>
+      </div>
+
+      <!-- MCP Partners -->
+      <div class="section-divider"></div>
+      <div class="section-label">🇨🇳 MCP 国产工具生态（重点集成）</div>
+      <div class="mcp-grid">
+        <div class="mcp-item"><span class="mcp-item__icon">📋</span>飞书 MCP<br>文档 · 群消息 · 日历</div>
+        <div class="mcp-item"><span class="mcp-item__icon">💼</span>企业微信 MCP<br>消息 · 文档 · 审批</div>
+        <div class="mcp-item"><span class="mcp-item__icon">📚</span>语雀 MCP<br>知识库读写</div>
+        <div class="mcp-item"><span class="mcp-item__icon">📌</span>PingCode MCP<br>项目管理 / Jira类</div>
+        <div class="mcp-item"><span class="mcp-item__icon">💻</span>Gitee / Coding MCP<br>代码托管</div>
+      </div>
+
+      <!-- LLM Providers -->
+      <div class="section-divider"></div>
+      <div class="section-label">LLM Provider Support</div>
+      <div class="provider-row">
+        <div class="provider-pill">Claude Opus 4 / Sonnet</div>
+        <div class="provider-pill">DeepSeek V3 / Reasoner</div>
+        <div class="provider-pill">GPT-4o / o3</div>
+        <div class="provider-pill">Gemini 2.0 Flash</div>
+        <div class="provider-pill">Ollama (local)</div>
+        <div class="provider-pill">Any OpenAI-compat API</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Legend ── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="--color:#00d9ff"></div>UI / Chat</div>
+  <div class="legend-item"><div class="legend-dot" style="--color:#9d5cff"></div>Agent Core</div>
+  <div class="legend-item"><div class="legend-dot" style="--color:#10f4b1"></div>Tool Registry</div>
+  <div class="legend-item"><div class="legend-dot" style="--color:#f59e0b"></div>Data / Intelligence</div>
+  <div class="legend-item"><div class="legend-dot" style="--color:#7b8ea3"></div>Infrastructure</div>
+  <div class="legend-item" style="margin-left:20px">
+    <div class="legend-dot" style="--color:#00d9ff"></div>
+    <span>MVP = 已实现 &nbsp;|&nbsp; Phase 2 = W5–W15 待实现</span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Plug Browser Relay",
+  "description": "Connect Plug AI agent to your Chrome browser with real session cookies.",
+  "version": "1.1.0",
+  "permissions": ["debugger", "tabs", "activeTab", "storage", "alarms", "offscreen"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Plug Browser Relay"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src ws://127.0.0.1:23001"
+  }
+}
