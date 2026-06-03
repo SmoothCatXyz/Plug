@@ -1,6 +1,7 @@
 appId: com.plug.app
 productName: Plug
 copyright: Copyright © 2026 Plug
+icon: build/icon.png
 
 directories:
   output: dist
@@ -20,8 +21,11 @@ asarUnpack:
 extraResources:
   - from: chrome-extension
     to: chrome-extension
+  - from: templates
+    to: templates
 
 mac:
+  icon: build/icon.png
   category: public.app-category.productivity
   # Signing/notarization are decided at CI time: with certs the workflow signs
   # and notarizes; without, it builds unsigned (CSC_IDENTITY_AUTO_DISCOVERY=false).
@@ -31,6 +35,7 @@ mac:
         - arm64
 
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch:

@@ -1,4 +1,5 @@
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { z } from "zod";
 import type { ProjectSummary } from "../../shared/types";
@@ -85,9 +86,10 @@ function getTemplatesDir(): string {
   }
 
   const resourcePath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  const packagedTemplatesDir = resourcePath ? join(resourcePath, "templates") : "";
 
-  if (process.env.NODE_ENV === "production" && resourcePath) {
-    return join(resourcePath, "templates");
+  if (packagedTemplatesDir && existsSync(packagedTemplatesDir)) {
+    return packagedTemplatesDir;
   }
 
   return join(process.cwd(), "templates");

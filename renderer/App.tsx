@@ -24,6 +24,7 @@ import type {
 } from "../shared/types";
 import { pendingToolApprovalSchema } from "../shared/tool-schema";
 import { CommandPalette, type CommandPaletteAction } from "./components/CommandPalette";
+import { StartupSplash } from "./components/StartupSplash";
 import { Launcher } from "./pages/Launcher";
 import { SettingsPanel } from "./pages/SettingsPanel";
 import { Workspace } from "./pages/Workspace";
@@ -71,6 +72,10 @@ export type CreateProjectDraft = {
 };
 
 export function App(): ReactElement {
+  const [startupVisible, setStartupVisible] = useState(true);
+  const hideStartup = useCallback((): void => {
+    setStartupVisible(false);
+  }, []);
   const [state, setState] = useState<BootstrapState>({
     appInfo: null,
     projects: [],
@@ -952,6 +957,10 @@ export function App(): ReactElement {
   }, []);
 
   useEffect(() => {
+    if (startupVisible) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadBootstrapState(): Promise<void> {
@@ -1033,7 +1042,7 @@ export function App(): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [loadWorkspace]);
+  }, [loadWorkspace, startupVisible]);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent): void {
@@ -1250,6 +1259,7 @@ export function App(): ReactElement {
         />
         {settingsPanel}
         {commandPalette}
+        {startupVisible ? <StartupSplash onComplete={hideStartup} /> : null}
       </>
     );
   }
@@ -1279,6 +1289,7 @@ export function App(): ReactElement {
       />
       {settingsPanel}
       {commandPalette}
+      {startupVisible ? <StartupSplash onComplete={hideStartup} /> : null}
     </>
   );
 }

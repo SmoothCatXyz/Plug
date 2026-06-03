@@ -1,30 +1,13 @@
-import { safeStorage } from "electron";
-
 const SAFE_STORAGE_PREFIX = "safe:v1:";
 const DEV_FALLBACK_PREFIX = "dev-fallback:v1:";
-
-type SafeStorageLike = {
-  isEncryptionAvailable(): boolean;
-  encryptString(value: string): Buffer;
-  decryptString(value: Buffer): string;
-};
+const LOCAL_SECRET_PREFIX = "local:v1:";
 
 export function encryptSecret(secret: string): string {
   if (!secret) {
     return "";
   }
 
-  const storage = getSafeStorage();
-
-  if (storage?.isEncryptionAvailable()) {
-    return `${SAFE_STORAGE_PREFIX}${storage.encryptString(secret).toString("base64")}`;
-  }
-
-  if (process.env.PLUG_ALLOW_INSECURE_SECRET_FALLBACK === "1") {
-    return `${DEV_FALLBACK_PREFIX}${Buffer.from(secret, "utf8").toString("base64")}`;
-  }
-
-  throw new Error("Electron safeStorage is not available for API key encryption.");
+  return `${LOCAL_SECRET_PREFIX}${encodeSecret(secret)}`;
 }
 
 export function decryptSecret(encryptedSecret: string): string {
@@ -32,31 +15,34 @@ export function decryptSecret(encryptedSecret: string): string {
     return "";
   }
 
-  if (encryptedSecret.startsWith(SAFE_STORAGE_PREFIX)) {
-    const storage = getSafeStorage();
-
-    if (!storage?.isEncryptionAvailable()) {
-      throw new Error("Electron safeStorage is not available for API key decryption.");
-    }
-
-    return storage.decryptString(Buffer.from(encryptedSecret.slice(SAFE_STORAGE_PREFIX.length), "base64"));
+  if (encryptedSecret.startsWith(LOCAL_SECRET_PREFIX)) {
+    return decodeSecret(encryptedSecret.slice(LOCAL_SECRET_PREFIX.length));
   }
 
   if (encryptedSecret.startsWith(DEV_FALLBACK_PREFIX) && process.env.PLUG_ALLOW_INSECURE_SECRET_FALLBACK === "1") {
-    return Buffer.from(encryptedSecret.slice(DEV_FALLBACK_PREFIX.length), "base64").toString("utf8");
+    return decodeSecret(encryptedSecret.slice(DEV_FALLBACK_PREFIX.length));
+  }
+
+  if (encryptedSecret.startsWith(SAFE_STORAGE_PREFIX)) {
+    throw new Error(
+      "This provider still uses a legacy Keychain-backed API key. Re-enter the API key in Settings to store it locally without Keychain."
+    );
   }
 
   throw new Error("Unsupported encrypted secret format.");
 }
 
 export function hasEncryptedSecret(encryptedSecret: string): boolean {
-  return encryptedSecret.startsWith(SAFE_STORAGE_PREFIX) || encryptedSecret.startsWith(DEV_FALLBACK_PREFIX);
+  return (
+    encryptedSecret.startsWith(LOCAL_SECRET_PREFIX) ||
+    (encryptedSecret.startsWith(DEV_FALLBACK_PREFIX) && process.env.PLUG_ALLOW_INSECURE_SECRET_FALLBACK === "1")
+  );
 }
 
-function getSafeStorage(): SafeStorageLike | null {
-  if (safeStorage && typeof safeStorage.isEncryptionAvailable === "function") {
-    return safeStorage;
-  }
+function encodeSecret(secret: string): string {
+  return Buffer.from(secret, "utf8").toString("base64");
+}
 
-  return null;
+function decodeSecret(encodedSecret: string): string {
+  return Buffer.from(encodedSecret, "base64").toString("utf8");
 }

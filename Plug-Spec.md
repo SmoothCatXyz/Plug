@@ -979,14 +979,14 @@ templates/product-dev/
       "id": "deepseek-default",
       "label": "DeepSeek",
       "baseURL": "https://api.deepseek.com/v1",
-      "apiKey": "{encrypted}",
+      "apiKey": "{local:v1 encoded}",
       "models": ["deepseek-chat", "deepseek-reasoner"]
     }
   ]
 }
 ```
 
-API key 在主进程加密存储（用 Electron `safeStorage`）。**渲染进程永远不接触明文 key**。
+API key 存在 Plug 本地配置文件中（`local:v1` 编码格式，不使用 macOS Keychain / Electron `safeStorage`）。**渲染进程永远不接触明文 key**。
 
 ---
 
@@ -1461,7 +1461,7 @@ plug/
 
 ### 15.5 安全
 
-- API key 用 Electron `safeStorage` 加密存储
+- API key 使用 Plug 本地配置文件的 `local:v1` 编码格式存储，不使用 macOS Keychain / Electron `safeStorage`
 - 渲染进程永远不接触明文 key（通过 IPC 代理 AI 调用）
 - `run_command` tool 默认禁用，需用户在 settings 显式开启
 - 文件读写限定在项目目录内，禁止跨项目访问
