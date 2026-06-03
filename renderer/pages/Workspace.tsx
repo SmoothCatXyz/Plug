@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, FormEvent, KeyboardEvent, ReactElement } from "react";
+import type { CSSProperties, FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
 import type {
   AgentMode,
   AppInfo,
@@ -75,8 +75,7 @@ type WorkspaceStyle = CSSProperties & {
 };
 
 const DOC_PANEL_MIN = 320;
-const DOC_PANEL_MAX = 560;
-const DOC_PANEL_STEP = 20;
+const DOC_PANEL_MAX = 960;
 
 type PromptAppField = {
   id: string;
@@ -227,6 +226,26 @@ export function Workspace({
       setDocPanelCollapsed(false);
     }
   }, [revealDocumentNonce]);
+
+  // Drag the divider on the doc panel's left edge to resize it. The panel hugs
+  // the right edge, so width = viewport width minus the pointer's X.
+  const startDocResize = useCallback((event: ReactPointerEvent) => {
+    event.preventDefault();
+    const onMove = (move: PointerEvent) => {
+      const next = Math.round(window.innerWidth - move.clientX);
+      setDocPanelWidth(Math.max(DOC_PANEL_MIN, Math.min(DOC_PANEL_MAX, next)));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   const chatMessages = sessionSnapshot?.session.messages ?? EMPTY_MESSAGES;
   const chatScroll = useChatScroll({
@@ -812,6 +831,15 @@ export function Workspace({
         </section>
 
         <aside className="workspace-doc" aria-label="Document viewer">
+          {!docPanelCollapsed ? (
+            <div
+              className="workspace-doc__resize"
+              onPointerDown={startDocResize}
+              role="separator"
+              aria-orientation="vertical"
+              title="拖动调整宽度"
+            />
+          ) : null}
           <button
             className="workspace-doc__rail"
             type="button"
@@ -823,7 +851,16 @@ export function Workspace({
           <div className="workspace-doc__panel">
               <div className="workspace-doc__header">
                 <div>
-                  <span className="hud-label">Document</span>
+                  <div className="workspace-doc__meta-top">
+                    <span className="hud-label">Document</span>
+                    {activeApproval ? (
+                      <StatusDot status="waiting" label="awaiting" />
+                    ) : documentMode === "edit" ? (
+                      <StatusDot status={documentDirty ? "waiting" : "complete"} label={documentDirty ? "dirty" : "clean"} />
+                    ) : (
+                      <StatusDot status="complete" label="read-only" />
+                    )}
+                  </div>
                   <h2>{activeApproval ? "Authorization Diff" : workspace.document.title}</h2>
                   <p>{activeApproval ? getApprovalTarget(activeApproval) : workspace.document.path}</p>
                 </div>
@@ -890,26 +927,20 @@ export function Workspace({
               </div>
 
               <div className="workspace-doc__toolbar">
-                {activeApproval ? (
+                {activeApproval && pendingApprovals.length > 1 ? (
+                  <select
+                    className="workspace-approval-select"
+                    value={activeApproval.id}
+                    onChange={(event) => onSelectApproval(event.target.value)}
+                  >
+                    {pendingApprovals.map((approval) => (
+                      <option key={approval.id} value={approval.id}>
+                        {approval.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : documentMode === "edit" && !activeApproval ? (
                   <div className="workspace-doc__edit-controls">
-                    <StatusDot status="waiting" label="awaiting authorization" />
-                    {pendingApprovals.length > 1 ? (
-                      <select
-                        className="workspace-approval-select"
-                        value={activeApproval.id}
-                        onChange={(event) => onSelectApproval(event.target.value)}
-                      >
-                        {pendingApprovals.map((approval) => (
-                          <option key={approval.id} value={approval.id}>
-                            {approval.title}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-                ) : documentMode === "edit" ? (
-                  <div className="workspace-doc__edit-controls">
-                    <StatusDot status={documentDirty ? "waiting" : "complete"} label={documentDirty ? "dirty" : "clean"} />
                     <button
                       className="workspace-icon-button workspace-icon-button--primary"
                       type="button"
@@ -922,24 +953,9 @@ export function Workspace({
                       Cancel
                     </button>
                   </div>
-                ) : (
-                  <div className="workspace-doc__edit-controls">
-                    <StatusDot status="complete" label="read-only" />
-                    {documentNotice ? <span className="workspace-doc__notice">{documentNotice}</span> : null}
-                  </div>
-                )}
-                <label className="workspace-doc__width-control">
-                  <span>Width</span>
-                  <input
-                    type="range"
-                    min={DOC_PANEL_MIN}
-                    max={DOC_PANEL_MAX}
-                    step={DOC_PANEL_STEP}
-                    value={docPanelWidth}
-                    onChange={(event) => setDocPanelWidth(Number(event.target.value))}
-                  />
-                </label>
-                <NumericText muted>{`${docPanelWidth}px`}</NumericText>
+                ) : documentNotice ? (
+                  <span className="workspace-doc__notice">{documentNotice}</span>
+                ) : null}
               </div>
 
               <div className="workspace-doc__body">

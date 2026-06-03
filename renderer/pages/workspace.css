@@ -1284,11 +1284,40 @@
 }
 
 .workspace-doc {
+  position: relative;
   z-index: 6;
   display: block;
   overflow: visible;
   border-right: 0;
   animation: doc-panel-enter var(--dur-medium) var(--ease-out);
+}
+
+/* Drag handle on the panel's left edge to resize it. */
+.workspace-doc__resize {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  z-index: 9;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.workspace-doc__resize::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.workspace-doc__resize:hover::after,
+.workspace-doc__resize:active::after {
+  background: var(--accent-cyan);
 }
 
 @keyframes doc-panel-enter {
@@ -1348,6 +1377,20 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   padding: 0 var(--space-4);
+}
+
+/* In read-only mode with no notice the toolbar is empty — collapse it so the
+   document gets that vertical space (status now lives in the header). */
+.workspace-doc__toolbar:empty {
+  min-height: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.workspace-doc__meta-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .workspace-doc__edit-controls {
