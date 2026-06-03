@@ -231,18 +231,35 @@ export function Workspace({
   // the right edge, so width = viewport width minus the pointer's X.
   const startDocResize = useCallback((event: ReactPointerEvent) => {
     event.preventDefault();
+    // Capture the pointer to the handle so move/up events still arrive even when
+    // the cursor passes over the document iframe (which would otherwise swallow
+    // them and leave the drag stuck "on").
+    const handle = event.currentTarget as HTMLElement;
+    const pointerId = event.pointerId;
+    try {
+      handle.setPointerCapture(pointerId);
+    } catch {
+      // pointer capture unsupported — listeners below still work for non-iframe
+    }
     const onMove = (move: PointerEvent) => {
       const next = Math.round(window.innerWidth - move.clientX);
       setDocPanelWidth(Math.max(DOC_PANEL_MIN, Math.min(DOC_PANEL_MAX, next)));
     };
     const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onUp);
+      handle.removeEventListener("pointercancel", onUp);
+      try {
+        handle.releasePointerCapture(pointerId);
+      } catch {
+        // already released
+      }
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onUp);
+    handle.addEventListener("pointercancel", onUp);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   }, []);
