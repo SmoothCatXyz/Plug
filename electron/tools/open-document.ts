@@ -79,7 +79,8 @@ async function findNewestDocument(projectRoot: string): Promise<string | null> {
     if (section.type === "file") continue;
     await walk(projectRoot, getSectionBasePath(section), (relPath, mtimeMs) => {
       const name = relPath.split("/").pop() ?? "";
-      if (name.endsWith(".md") && name !== "_index.md") {
+      const isDoc = name.endsWith(".md") || /\.html?$/i.test(name);
+      if (isDoc && name !== "_index.md") {
         candidates.push({ path: relPath, mtimeMs });
       }
     });

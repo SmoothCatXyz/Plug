@@ -112,8 +112,8 @@ async function resolveDocumentPath(projectRoot: string, rawPath: string, fromPat
     throw new Error(`Document path is not a file: ${rawPath}`);
   }
 
-  if (!isMarkdownPath(absolutePath)) {
-    throw new Error(`Only markdown documents can be opened: ${rawPath}`);
+  if (!isOpenableDocument(absolutePath)) {
+    throw new Error(`Only markdown or html documents can be opened: ${rawPath}`);
   }
 
   return normalizeRelativePath(projectRoot, absolutePath);
@@ -127,8 +127,8 @@ async function assertReadableMarkdownFile(projectRoot: string, relativePath: str
     throw new Error(`Document path is not a file: ${relativePath}`);
   }
 
-  if (!isMarkdownPath(absolutePath)) {
-    throw new Error(`Only markdown documents can be opened: ${relativePath}`);
+  if (!isOpenableDocument(absolutePath)) {
+    throw new Error(`Only markdown or html documents can be opened: ${relativePath}`);
   }
 
   return absolutePath;
@@ -159,8 +159,8 @@ function parseLocalDocumentPath(rawPath: string): string {
   }
 }
 
-function isMarkdownPath(filePath: string): boolean {
-  return [".md", ".markdown"].includes(extname(filePath).toLowerCase());
+function isOpenableDocument(filePath: string): boolean {
+  return [".md", ".markdown", ".html", ".htm"].includes(extname(filePath).toLowerCase());
 }
 
 function normalizePathFragment(pathFragment: string): string {

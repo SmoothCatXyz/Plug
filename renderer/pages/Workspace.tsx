@@ -22,6 +22,16 @@ import "./workspace.css";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
+function isHtmlDocument(path: string): boolean {
+  return /\.html?$/i.test(path);
+}
+
+// Hide a leading YAML front-matter block from the rendered markdown view.
+function stripFrontMatter(content: string): string {
+  const match = content.match(/^﻿?---\s*\n[\s\S]*?\n---\s*\n?/);
+  return match ? content.slice(match[0].length) : content;
+}
+
 const MarkdownEditor = lazy(async () => {
   const module = await import("../components/MarkdownEditor");
   return { default: module.MarkdownEditor };
@@ -935,6 +945,14 @@ export function Workspace({
               <div className="workspace-doc__body">
                 {activeApproval ? (
                   <DiffPanel approval={activeApproval} />
+                ) : isHtmlDocument(workspace.document.path) ? (
+                  <iframe
+                    key={workspace.document.path}
+                    className="workspace-doc__html"
+                    title={workspace.document.title}
+                    sandbox="allow-scripts"
+                    srcDoc={workspace.document.content}
+                  />
                 ) : documentMode === "edit" ? (
                   <Suspense fallback={<div className="workspace-doc__loading">Loading Milkdown editor...</div>}>
                     <MarkdownEditor
@@ -944,7 +962,7 @@ export function Workspace({
                     />
                   </Suspense>
                 ) : (
-                  <MarkdownViewer content={workspace.document.content} onOpenDocumentPath={openLinkedDocument} />
+                  <MarkdownViewer content={stripFrontMatter(workspace.document.content)} onOpenDocumentPath={openLinkedDocument} />
                 )}
               </div>
           </div>

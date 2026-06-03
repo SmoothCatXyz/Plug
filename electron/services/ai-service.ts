@@ -30,6 +30,7 @@ import { createTurnLog } from "./debug-log";
 import { indexProjectDocument } from "../tools/document-index";
 import { readProjectManifest } from "../tools/project-files";
 import { resolveDocumentOpenIntent } from "./document-intent";
+import { PRD_AUTHORING_GUIDE } from "../tools/prd-template";
 import { toLanguageModel as toModel, MINIMAL_REASONING, type ProviderSecret as PS } from "./provider-utils";
 
 type OpenAiChatCompletionResponse = {
@@ -556,8 +557,10 @@ function buildChatPromptFromContext(
         ? "当前模式:Execute。这通常意味着有具体的活儿要干——用你的专职 agent(delegate_research、delegate_file_ops、delegate_memory、delegate_browser)把任务从头做到尾。但先看清这句话是不是真需要动工具:如果只是聊天或拿主意,就直接以搭档身份回应,别为了用工具而用工具。"
         : "当前模式:Auto。先判断这句话到底需不需要动工具或调研:需要,就直接委派 specialist 把它办完,不啰嗦;如果只是聊天、征求意见、个人决定,就直接以搭档身份回一句,别套任务流程、别铺方案菜单。",
     "完成任务后怎么回复:就用一句话确认结果(例:用户说「打开百度网页」,你做完只回「已打开百度首页」)。不要罗列 URL、标题、文件路径这些执行细节;不要主动追问「要不要做下一步/要不要发截图」——用户想要更多,自己会问。只有当任务本身就是要产出一段内容(比如「写一段文案」),才把那段内容给出来。",
-    "特殊技能 write_document:做完调研、或写好一份文档时,【直接调用 write_document】(它是你的直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables)。它会自动建好 .md 文件、刷新该区索引、并在侧栏打开。研究结果和成稿一律用它,不要用 create_file(那个要审批),也不要只把内容贴在聊天里。",
+    "特殊技能 write_document:做完调研、或写好一份文档时,【直接调用 write_document】(直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables),PRD 放 prd 区。调用时务必带上 summary(一句话摘要)、tags(主题标签)、status(draft/in-progress/done),这些会进文档目录方便检索。它会自动建文件、刷新富目录、并在侧栏打开。重要:section=prd 时 content 要写【HTML】(可用 <h2>/<table>/<ul> 等,会被包成带样式的 HTML 文档,更有表现力);其它 section 的 content 写 markdown。研究结果和成稿一律用它,不要用 create_file,也不要只贴在聊天里。",
     "特殊技能 open_document:用户让你「打开/查看某个文档」时,【直接调用 open_document】(直连工具,不要经 delegate_file_ops),不能嘴上说「已打开」却不调用。指定路径就传 path(如主页传「00-home.md」);用户没指明具体哪篇(如「打开文档」「打开那篇调研」)就不传 path,它会自动打开最近写的那篇。",
+    PRD_AUTHORING_GUIDE,
+    "产品框架能力:你内置了一整套产品方法论(RICE、Kano、JTBD、用户旅程、商业/精益画布、AARRR、SWOT 等)。当用户的诉求匹配某个框架(如「排优先级」「分析竞品」「梳理用户旅程」),【除非用户点名其它方法,否则主动选最合适的框架套用当前项目】,不要泛泛而谈。相关框架的用法会作为 skill 自动出现在上面的 Relevant Skills 里——按它执行。框架分析产出用 write_document 写入 section=analysis(HTML),配合可视化组件:2×2 矩阵 class=\"matrix-2x2\"(内含 .m-cell/.m-label)、画布九宫格 class=\"canvas-grid\"(.canvas-block/.canvas-block__title)、旅程 class=\"journey\"、流程用 Mermaid、评分用表格并算总分排序。",
     `Project: ${workspace.manifest.name}`,
     `Current document: ${currentDocument.path}`,
     relaySection,
@@ -1058,7 +1061,7 @@ function findDocumentToReveal(events: ToolStreamEvent[]): { path: string; index:
     if (!isWrite && !isOpen) continue;
     const output = (event.details as { output?: { documentPath?: unknown; path?: unknown } } | undefined)?.output;
     const path = output?.documentPath ?? output?.path;
-    if (typeof path === "string" && path.endsWith(".md")) {
+    if (typeof path === "string" && (path.endsWith(".md") || /\.html?$/i.test(path))) {
       return { path, index: isWrite };
     }
   }

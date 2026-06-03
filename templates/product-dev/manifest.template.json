@@ -69,6 +69,14 @@
       "type": "folder",
       "aiWrite": "confirm",
       "icon": "package"
+    },
+    {
+      "id": "analysis",
+      "label": "分析",
+      "path": "07-analysis/",
+      "type": "folder",
+      "aiWrite": "auto",
+      "icon": "bar-chart"
     }
   ]
 }

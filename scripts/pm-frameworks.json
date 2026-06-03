@@ -1,0 +1,596 @@
+{
+  "design-thinking": {
+    "by": "IDEO · Tim Brown",
+    "type": "创新方法论",
+    "fit": "早期探索 · 产品重定义 · 用户为中心设计",
+    "year": "2008"
+  },
+  "user-journey-map": {
+    "by": "Adaptive Path · Brandon Schauer",
+    "type": "体验可视化工具",
+    "fit": "用户体验优化 · 服务触点梳理 · 情绪分析",
+    "year": "1998"
+  },
+  "empathy-map": {
+    "by": "Dave Gray · XPLANE",
+    "type": "用户研究工具",
+    "fit": "用户画像构建 · 团队对齐 · 需求发现",
+    "year": "2010"
+  },
+  "jtbd": {
+    "by": "Clayton Christensen · Bob Moesta",
+    "type": "需求分析框架",
+    "fit": "产品定位 · 竞争分析 · 创新机会发现",
+    "year": "2003"
+  },
+  "user-interview-five-questions": {
+    "by": "Michael Margolis · GV",
+    "type": "用户访谈方法",
+    "fit": "深度访谈 · 需求挖掘 · 验证假设",
+    "year": "2016"
+  },
+  "kano-model": {
+    "by": "Noriaki Kano",
+    "type": "需求优先级模型",
+    "fit": "功能优先级排序 · 满意度分析 · 产品规划",
+    "year": "1984"
+  },
+  "service-blueprint": {
+    "by": "G. Lynn Shostack",
+    "type": "服务设计工具",
+    "fit": "服务流程设计 · 前后台协同 · 触点优化",
+    "year": "1984"
+  },
+  "contextual-inquiry": {
+    "by": "Hugh Beyer · Karen Holtzblatt",
+    "type": "用户研究方法",
+    "fit": "实地观察 · 任务分析 · 隐性需求发现",
+    "year": "1998"
+  },
+  "affinity-diagram": {
+    "by": "Jiro Kawakita (KJ法)",
+    "type": "定性分析工具",
+    "fit": "研究数据归纳 · 灵感聚类 · 团队共创",
+    "year": "1967"
+  },
+  "diary-study": {
+    "by": "Brenda Zimmerman et al.",
+    "type": "纵向研究方法",
+    "fit": "长周期行为跟踪 · 习惯发现 · 体验记录",
+    "year": "2003"
+  },
+  "musk-five-steps": {
+    "by": "Elon Musk",
+    "type": "工程管理方法",
+    "fit": "流程精简 · 产品简化 · 效率优化",
+    "year": "2021"
+  },
+  "five-why": {
+    "by": "Sakichi Toyoda · Toyota",
+    "type": "根因分析工具",
+    "fit": "问题根因定位 · 故障排查 · 持续改进",
+    "year": "1930"
+  },
+  "hmw": {
+    "by": "Procter & Gamble · IDEO",
+    "type": "创意转化工具",
+    "fit": "问题重构 · 创意发散 · 设计工作坊",
+    "year": "1970"
+  },
+  "pov-statement": {
+    "by": "d.school · Stanford",
+    "type": "问题定义工具",
+    "fit": "需求定义 · 设计方向对齐 · 团队共识",
+    "year": "2010"
+  },
+  "issue-tree": {
+    "by": "McKinsey & Company",
+    "type": "结构化分析工具",
+    "fit": "复杂问题拆解 · 假设驱动分析 · MECE梳理",
+    "year": "1966"
+  },
+  "iceberg-model": {
+    "by": "Edward T. Hall · Donella Meadows",
+    "type": "系统思维工具",
+    "fit": "深层原因探索 · 系统结构分析 · 心智模式识别",
+    "year": "1976"
+  },
+  "double-diamond": {
+    "by": "British Design Council",
+    "type": "设计流程模型",
+    "fit": "端到端设计流程 · 发散收敛循环 · 项目规划",
+    "year": "2005"
+  },
+  "rca": {
+    "by": "Kaoru Ishikawa",
+    "type": "根因分析工具",
+    "fit": "质量问题分析 · 多因素排查 · 流程改进",
+    "year": "1968"
+  },
+  "cynefin": {
+    "by": "Dave Snowden",
+    "type": "决策情境模型",
+    "fit": "决策场景判断 · 策略选择 · 复杂性识别",
+    "year": "1999"
+  },
+  "jobs-scoping": {
+    "by": "Anthony Ulwick · Strategyn",
+    "type": "任务范围定义工具",
+    "fit": "任务地图绘制 · 需求全景梳理 · 创新机会发现",
+    "year": "2005"
+  },
+  "scamper": {
+    "by": "Bob Eberle",
+    "type": "系统化创意激发工具",
+    "fit": "产品改进 · 功能创新 · 头脑风暴",
+    "year": "1971"
+  },
+  "six-thinking-hats": {
+    "by": "Edward de Bono",
+    "type": "平行思维引导工具",
+    "fit": "团队讨论 · 决策会议 · 减少争论",
+    "year": "1985"
+  },
+  "reverse-brainstorming": {
+    "by": "Edward de Bono 等",
+    "type": "逆向思维激发工具",
+    "fit": "突破思维瓶颈 · 风险预防 · 创意发散",
+    "year": "1960s"
+  },
+  "crazy-eights": {
+    "by": "Google Ventures / Jake Knapp",
+    "type": "快速方案草绘工具",
+    "fit": "设计冲刺 · 方案发散 · 快速原型",
+    "year": "2016"
+  },
+  "analogical-thinking": {
+    "by": "Dedre Gentner 等",
+    "type": "跨领域迁移思维工具",
+    "fit": "突破性创新 · 借鉴他业 · 概念重构",
+    "year": "1983"
+  },
+  "value-proposition-canvas": {
+    "by": "Alexander Osterwalder",
+    "type": "价值匹配设计工具",
+    "fit": "产品定位 · 用户痛点匹配 · PMF 验证",
+    "year": "2014"
+  },
+  "how-now-wow": {
+    "by": "Gamestorming 社区",
+    "type": "创意筛选矩阵工具",
+    "fit": "创意分类 · 优先级排序 · 团队共识",
+    "year": "2010"
+  },
+  "opportunity-solution-tree": {
+    "by": "Teresa Torres",
+    "type": "机会发现与方案决策工具",
+    "fit": "产品发现 · 持续交付 · 团队对齐",
+    "year": "2021"
+  },
+  "story-spine": {
+    "by": "Kenn Adams / Pixar",
+    "type": "叙事结构构建工具",
+    "fit": "产品愿景 · 用户故事 · 团队对齐",
+    "year": "1991"
+  },
+  "triz": {
+    "by": "Genrich Altshuller",
+    "type": "系统化发明创新工具",
+    "fit": "功能矛盾解决 · 工程创新 · 产品突破",
+    "year": "1946"
+  },
+  "pain-solution-matrix": {
+    "by": "精益产品社区",
+    "type": "痛点与方案优先级工具",
+    "fit": "需求优先级 · 资源分配 · MVP 选择",
+    "year": "2010s"
+  },
+  "lean-startup-mvp": {
+    "by": "Eric Ries",
+    "type": "最小可行产品验证工具",
+    "fit": "创业验证 · 产品迭代 · 降低风险",
+    "year": "2011"
+  },
+  "mental-models": {
+    "by": "Don Norman",
+    "type": "用户心智模型分析工具",
+    "fit": "交互设计 · 可用性优化 · 认知对齐",
+    "year": "1988"
+  },
+  "ab-testing": {
+    "by": "Ronald Fisher 等",
+    "type": "对照实验决策工具",
+    "fit": "数据驱动决策 · 转化率优化 · 功能验证",
+    "year": "1920s"
+  },
+  "assumption-validation-board": {
+    "by": "David Bland",
+    "type": "假设验证追踪工具",
+    "fit": "假设管理 · 实验追踪 · 团队学习",
+    "year": "2019"
+  },
+  "usability-testing-five-users": {
+    "by": "Jakob Nielsen",
+    "type": "小样本可用性测试方法",
+    "fit": "可用性评估 · 迭代测试 · 低成本验证",
+    "year": "2000"
+  },
+  "wizard-of-oz": {
+    "by": "Jeff Kelley / John F. Gould",
+    "type": "模拟技术原型测试工具",
+    "fit": "概念验证 · 技术可行性 · 用户体验测试",
+    "year": "1984"
+  },
+  "north-star-metric": {
+    "by": "Sean Ellis / Amplitude",
+    "type": "核心指标聚焦工具",
+    "fit": "指标体系 · 团队对齐 · 增长策略",
+    "year": "2017"
+  },
+  "validated-learning-loop": {
+    "by": "Eric Ries",
+    "type": "验证学习循环工具",
+    "fit": "精益迭代 · 假设验证 · 转型决策",
+    "year": "2011"
+  },
+  "lean-canvas": {
+    "by": "Ash Maurya",
+    "type": "精益商业模式画布工具",
+    "fit": "创业规划 · 商业模式 · 快速验证",
+    "year": "2012"
+  },
+  "problem-solution-fit": {
+    "by": "Ash Maurya",
+    "type": "验证框架",
+    "fit": "早期创业验证 · MVP 测试 · 精益创业",
+    "year": "2012"
+  },
+  "task-completion-rate": {
+    "by": "Jakob Nielsen",
+    "type": "可用性指标",
+    "fit": "可用性测试 · 产品验收 · UX 评估",
+    "year": "1993"
+  },
+  "user-story-map": {
+    "by": "Jeff Patton",
+    "type": "需求规划",
+    "fit": "敏捷迭代 · 版本规划 · 需求梳理",
+    "year": "2005"
+  },
+  "rice": {
+    "by": "Intercom",
+    "type": "优先级模型",
+    "fit": "需求排序 · 路线图规划 · 资源分配",
+    "year": "2018"
+  },
+  "moscow": {
+    "by": "Dai Clegg",
+    "type": "优先级分类",
+    "fit": "需求管理 · Sprint 规划 · 版本定义",
+    "year": "1994"
+  },
+  "impact-effort-matrix": {
+    "by": "Unknown",
+    "type": "决策矩阵",
+    "fit": "任务优先级 · 项目规划 · 快速决策",
+    "year": "N/A"
+  },
+  "sprint": {
+    "by": "Ken Schwaber / Jeff Sutherland",
+    "type": "敏捷执行",
+    "fit": "产品迭代 · 软件开发 · 团队协作",
+    "year": "1995"
+  },
+  "google-design-sprint": {
+    "by": "Jake Knapp / GV",
+    "type": "快速验证",
+    "fit": "产品创新 · 快速原型 · 概念验证",
+    "year": "2016"
+  },
+  "shape-up": {
+    "by": "Ryan Singer / Basecamp",
+    "type": "产品开发",
+    "fit": "小团队产品 · 固定周期交付 · 远程团队",
+    "year": "2019"
+  },
+  "now-next-later": {
+    "by": "Janna Bastow",
+    "type": "路线图",
+    "fit": "产品路线图 · 战略对齐 · 相关方沟通",
+    "year": "2017"
+  },
+  "daci": {
+    "by": "Intuit",
+    "type": "决策框架",
+    "fit": "跨部门决策 · 职责明确 · 项目管理",
+    "year": "2000s"
+  },
+  "ice": {
+    "by": "Sean Ellis",
+    "type": "评分模型",
+    "fit": "增长实验 · 快速迭代 · A/B 测试",
+    "year": "2010"
+  },
+  "ogsm": {
+    "by": "Procter & Gamble",
+    "type": "战略规划",
+    "fit": "年度规划 · 战略落地 · OKR 替代",
+    "year": "1950s"
+  },
+  "circles": {
+    "by": "Lewis C. Lin",
+    "type": "结构化方法",
+    "fit": "PM 面试 · 产品设计 · 需求分析",
+    "year": "2011"
+  },
+  "working-backwards": {
+    "by": "Amazon",
+    "type": "产品开发",
+    "fit": "新产品定义 · 以客户为中心 · 战略决策",
+    "year": "2004"
+  },
+  "event-storming": {
+    "by": "Alberto Brandolini",
+    "type": "领域建模",
+    "fit": "系统设计 · DDD · 复杂业务建模",
+    "year": "2013"
+  },
+  "aarrr": {
+    "by": "Dave McClure",
+    "type": "增长漏斗",
+    "fit": "增长分析 · 用户生命周期 · 创业指标",
+    "year": "2007"
+  },
+  "growth-flywheel": {
+    "by": "Jim Collins / Amazon",
+    "type": "增长模型",
+    "fit": "平台增长 · 网络效应 · 战略规划",
+    "year": "2001"
+  },
+  "hook-model": {
+    "by": "Nir Eyal",
+    "type": "习惯养成",
+    "fit": "用户留存 · 产品粘性 · 行为设计",
+    "year": "2014"
+  },
+  "pmf": {
+    "by": "Marc Andreessen",
+    "type": "增长验证",
+    "fit": "创业验证 · 产品定位 · 增长前提",
+    "year": "2007"
+  },
+  "competitive-positioning-map": {
+    "by": "Michael Porter",
+    "type": "竞争分析",
+    "fit": "市场进入 · 差异化定位 · 竞品分析",
+    "year": "1980"
+  },
+  "blue-ocean-errc": {
+    "by": "W. Chan Kim / Renee Mauborgne",
+    "type": "战略创新",
+    "fit": "市场开拓 · 价值重塑 · 差异化突围",
+    "year": "2005"
+  },
+  "ltv-cac": {
+    "by": "David Skok",
+    "type": "增长指标",
+    "fit": "增长健康度 · 渠道优化 · 投资决策",
+    "year": "2010s"
+  },
+  "gtm": {
+    "by": "Geoffrey Moore et al.",
+    "type": "上市策略",
+    "fit": "新品发布 · 市场扩张 · 渠道规划",
+    "year": "1991"
+  },
+  "network-effects": {
+    "by": "Andrew Chen / NFX",
+    "type": "增长飞轮",
+    "fit": "平台产品 · 社交产品 · 市场双边",
+    "year": "2018"
+  },
+  "storybrand": {
+    "by": "Donald Miller",
+    "type": "品牌叙事",
+    "fit": "品牌定位 · 营销文案 · 用户沟通",
+    "year": "2017"
+  },
+  "stp": {
+    "by": "Philip Kotler",
+    "type": "营销定位",
+    "fit": "市场细分 · 目标选择 · 定位策略",
+    "year": "1969"
+  },
+  "fogg-behavior-model": {
+    "by": "BJ Fogg",
+    "type": "行为设计",
+    "fit": "用户激活 · 习惯养成 · 转化优化",
+    "year": "2009"
+  },
+  "jtbd-growth-matrix": {
+    "by": "Tony Ulwick / Clayton Christensen",
+    "type": "增长矩阵",
+    "fit": "机会发现 · 产品扩展 · 需求挖掘",
+    "year": "2005"
+  },
+  "empathy-driven-roadmap": {
+    "by": "Teresa Torres",
+    "type": "路线规划",
+    "fit": "路线图排序 · 用户痛点 · 优先级决策",
+    "year": "2021"
+  },
+  "first-principles": {
+    "by": "Elon Musk / Aristotle",
+    "type": "底层思维",
+    "fit": "颠覆创新 · 成本重构 · 根因分析",
+    "year": "~350 BC"
+  },
+  "systems-thinking": {
+    "by": "Peter Senge / Donella Meadows",
+    "type": "系统分析",
+    "fit": "复杂问题 · 组织变革 · 长期规划",
+    "year": "1990"
+  },
+  "wardley-mapping": {
+    "by": "Simon Wardley",
+    "type": "战略地图",
+    "fit": "技术战略 · 组件演进 · 竞争预判",
+    "year": "2005"
+  },
+  "three-horizons": {
+    "by": "Mehrdad Baghai / McKinsey",
+    "type": "创新组合",
+    "fit": "创新管理 · 资源分配 · 长期布局",
+    "year": "1999"
+  },
+  "platform-ecosystem-canvas": {
+    "by": "Sangeet Paul Choudary",
+    "type": "平台设计",
+    "fit": "平台搭建 · 生态治理 · 多边市场",
+    "year": "2015"
+  },
+  "business-model-canvas": {
+    "by": "Alexander Osterwalder",
+    "type": "商业画布",
+    "fit": "商业模式 · 创业规划 · 战略对齐",
+    "year": "2010"
+  },
+  "product-lifecycle": {
+    "by": "Theodore Levitt",
+    "type": "生命周期",
+    "fit": "产品战略 · 资源配置 · 阶段决策",
+    "year": "1965"
+  },
+  "antifragile-design": {
+    "by": "Nassim Nicholas Taleb",
+    "type": "韧性设计",
+    "fit": "风险管理 · 系统韧性 · 不确定性",
+    "year": "2012"
+  },
+  "theory-of-constraints": {
+    "by": "Eliyahu Goldratt",
+    "type": "瓶颈管理",
+    "fit": "流程优化 · 产能提升 · 交付加速",
+    "year": "1984"
+  },
+  "systems-archetypes": {
+    "by": "Peter Senge",
+    "type": "系统原型",
+    "fit": "系统诊断 · 模式识别 · 策略预警",
+    "year": "1990"
+  },
+  "jobs-portfolio": {
+    "by": "Anthony Ulwick",
+    "type": "矩阵",
+    "fit": "产品组合规划 · 资源分配 · 战略投资",
+    "year": "2005"
+  },
+  "morphological-chart": {
+    "by": "Fritz Zwicky",
+    "type": "画布",
+    "fit": "方案探索 · 创意组合 · 概念设计",
+    "year": "1967"
+  },
+  "innovation-diffusion-curve": {
+    "by": "Everett Rogers",
+    "type": "时间线",
+    "fit": "市场进入策略 · 用户增长 · 产品推广",
+    "year": "1962"
+  },
+  "four-actions-framework": {
+    "by": "W. Chan Kim / Renee Mauborgne",
+    "type": "矩阵",
+    "fit": "蓝海战略 · 价值创新 · 差异化",
+    "year": "2005"
+  },
+  "snap": {
+    "by": "Janna Bastow",
+    "type": "流程",
+    "fit": "功能决策 · 需求筛选 · 优先级判断",
+    "year": "2019"
+  },
+  "feature-priority-pyramid": {
+    "by": "Noriaki Kano (adapted)",
+    "type": "金字塔",
+    "fit": "功能分层 · 体验策略 · 产品规划",
+    "year": "2012"
+  },
+  "threshold-of-viable-ideas": {
+    "by": "IDEO",
+    "type": "漏斗",
+    "fit": "创意筛选 · 概念验证 · 方案收敛",
+    "year": "2015"
+  },
+  "pestle": {
+    "by": "Francis Aguilar",
+    "type": "画布",
+    "fit": "宏观环境分析 · 战略规划 · 风险评估",
+    "year": "1967"
+  },
+  "swot": {
+    "by": "Albert Humphrey",
+    "type": "矩阵",
+    "fit": "竞争分析 · 战略定位 · 自我评估",
+    "year": "1960"
+  },
+  "persona": {
+    "by": "Alan Cooper",
+    "type": "画布",
+    "fit": "用户建模 · 需求定义 · 团队对齐",
+    "year": "1999"
+  },
+  "competitive-analysis": {
+    "by": "Michael Porter",
+    "type": "矩阵",
+    "fit": "竞品对比 · 市场定位 · 差距分析",
+    "year": "1980"
+  },
+  "elevator-pitch": {
+    "by": "Geoffrey Moore",
+    "type": "流程",
+    "fit": "产品定位 · 价值传达 · 团队共识",
+    "year": "1991"
+  },
+  "heart": {
+    "by": "Kerry Rodden / Google",
+    "type": "矩阵",
+    "fit": "体验度量 · 数据驱动 · 目标设定",
+    "year": "2010"
+  },
+  "pure": {
+    "by": "Daniel Elizalde",
+    "type": "流程",
+    "fit": "设计评估 · 质量检查 · 方案评审",
+    "year": "2018"
+  },
+  "priority-quadrant": {
+    "by": "Dwight Eisenhower",
+    "type": "矩阵",
+    "fit": "任务管理 · 时间分配 · 团队排期",
+    "year": "1954"
+  },
+  "user-feedback-loop": {
+    "by": "Lean Startup Community",
+    "type": "循环",
+    "fit": "持续改进 · 用户驱动 · 敏捷迭代",
+    "year": "2011"
+  },
+  "ansoff-matrix": {
+    "by": "Igor Ansoff",
+    "type": "矩阵",
+    "fit": "增长策略 · 市场扩展 · 产品多元化",
+    "year": "1957"
+  },
+  "value-chain-analysis": {
+    "by": "Michael Porter",
+    "type": "流程",
+    "fit": "价值链优化 · 成本分析 · 竞争优势",
+    "year": "1985"
+  },
+  "lean-ux-canvas": {
+    "by": "Jeff Gothelf / Josh Seiden",
+    "type": "画布",
+    "fit": "精益实验 · 假设验证 · 敏捷UX",
+    "year": "2013"
+  }
+}

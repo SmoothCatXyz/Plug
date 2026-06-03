@@ -5,6 +5,7 @@ import {
   writeProjectTextFile
 } from "./project-files";
 import { regenerateSectionIndex } from "./update-index";
+import { isHtmlPath, parseDocMetadata, resolveDocTitle } from "./document-metadata";
 
 const HOME_RECENT_HEADING = "## 最近文档";
 const HOME_RECENT_LIMIT = 12;
@@ -20,7 +21,8 @@ const HOME_RECENT_LIMIT = 12;
  */
 export async function indexProjectDocument(projectRoot: string, relPath: string): Promise<string | null> {
   const fileName = relPath.split("/").pop() ?? "";
-  if (!relPath.endsWith(".md") || fileName === "_index.md" || fileName === "00-home.md") {
+  const indexable = relPath.endsWith(".md") || isHtmlPath(relPath);
+  if (!indexable || fileName === "_index.md" || fileName === "00-home.md") {
     return null;
   }
 
@@ -30,7 +32,7 @@ export async function indexProjectDocument(projectRoot: string, relPath: string)
     return null; // not a writable folder section we index
   }
 
-  const title = await documentTitle(projectRoot, relPath, fileName.replace(/\.md$/, ""));
+  const title = await documentTitle(projectRoot, relPath, fileName.replace(/\.[^.]+$/, ""));
   await regenerateSectionIndex(projectRoot, section);
   await linkFromHome(projectRoot, relPath, title);
   return title;
@@ -39,12 +41,11 @@ export async function indexProjectDocument(projectRoot: string, relPath: string)
 async function documentTitle(projectRoot: string, relPath: string, fallback: string): Promise<string> {
   try {
     const { content } = await readProjectTextFile(projectRoot, relPath);
-    const h1 = content.split("\n").find((line) => line.trim().startsWith("# "));
-    if (h1) return h1.replace(/^#\s+/, "").trim();
+    const { meta, body } = parseDocMetadata(content, relPath);
+    return resolveDocTitle(meta, body, relPath, fallback);
   } catch {
-    // ignore — use fallback
+    return fallback;
   }
-  return fallback;
 }
 
 function nowStamp(): string {
