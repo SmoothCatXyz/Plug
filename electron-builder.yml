@@ -1,0 +1,43 @@
+appId: com.plug.app
+productName: Plug
+copyright: Copyright © 2026 Plug
+
+directories:
+  output: dist
+  buildResources: build
+
+# electron-vite emits the built app into out/; package that plus prod deps.
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.map"
+
+# esbuild-wasm is fetched at runtime and must stay outside the asar archive.
+asarUnpack:
+  - "**/*.wasm"
+
+# Ship the browser-relay Chrome extension alongside the app.
+extraResources:
+  - from: chrome-extension
+    to: chrome-extension
+
+mac:
+  category: public.app-category.productivity
+  # Unsigned build (no Developer ID in CI). Distribution still works; users may
+  # need to right-click → Open the first time.
+  identity: null
+  target:
+    - target: dmg
+      arch:
+        - arm64
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

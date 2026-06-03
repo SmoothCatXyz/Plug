@@ -2,6 +2,7 @@
   "name": "plug",
   "version": "0.0.0",
   "description": "Plug desktop AI workspace",
+  "author": "Plug",
   "private": true,
   "type": "module",
   "main": "out/main/main.js",
@@ -9,7 +10,9 @@
     "dev": "electron-vite dev",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "build": "npm run typecheck && electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "dist:mac": "electron-builder --mac --arm64",
+    "dist:win": "electron-builder --win --x64"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
@@ -34,6 +37,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^3.0.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",

@@ -1,0 +1,56 @@
+name: Release
+
+# Tag a commit (e.g. `git tag v0.1.0 && git push origin v0.1.0`) to build and
+# publish the macOS (Apple Silicon) and Windows installers to a GitHub Release.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14 # Apple Silicon runner -> arm64
+            script: dist:mac
+            artifacts: |
+              dist/*.dmg
+              dist/*.dmg.blockmap
+          - os: windows-latest
+            script: dist:win
+            artifacts: |
+              dist/*.exe
+              dist/*.exe.blockmap
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build app bundle
+        run: npm run build
+
+      - name: Package installer
+        run: npm run ${{ matrix.script }}
+        env:
+          # Unsigned builds in CI (no certificates configured).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach installer to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifacts }}
+          fail_on_unmatched_files: false
