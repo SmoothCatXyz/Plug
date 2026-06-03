@@ -23,9 +23,8 @@ extraResources:
 
 mac:
   category: public.app-category.productivity
-  # Unsigned build (no Developer ID in CI). Distribution still works; users may
-  # need to right-click → Open the first time.
-  identity: null
+  # Signing/notarization are decided at CI time: with certs the workflow signs
+  # and notarizes; without, it builds unsigned (CSC_IDENTITY_AUTO_DISCOVERY=false).
   target:
     - target: dmg
       arch:

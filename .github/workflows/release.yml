@@ -2,6 +2,12 @@ name: Release
 
 # Tag a commit (e.g. `git tag v0.1.0 && git push origin v0.1.0`) to build and
 # publish the macOS (Apple Silicon) and Windows installers to a GitHub Release.
+#
+# Signing is automatic: if the relevant secrets are set the build is signed (and
+# macOS is notarized); if they are absent an unsigned installer is produced.
+#   macOS  : MAC_CSC_LINK (base64 .p12), MAC_CSC_KEY_PASSWORD,
+#            APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (for notarize)
+#   Windows: WIN_CSC_LINK (base64 .pfx), WIN_CSC_KEY_PASSWORD
 on:
   push:
     tags:
@@ -17,12 +23,10 @@ jobs:
       matrix:
         include:
           - os: macos-14 # Apple Silicon runner -> arm64
-            script: dist:mac
             artifacts: |
               dist/*.dmg
               dist/*.dmg.blockmap
           - os: windows-latest
-            script: dist:win
             artifacts: |
               dist/*.exe
               dist/*.exe.blockmap
@@ -42,12 +46,32 @@ jobs:
       - name: Build app bundle
         run: npm run build
 
-      - name: Package installer
-        run: npm run ${{ matrix.script }}
+      - name: Package installer (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          if [ -n "${CSC_LINK}" ]; then
+            if [ -n "${APPLE_ID}" ]; then NOTARIZE="-c.mac.notarize=true"; else NOTARIZE=""; fi
+            echo "::notice::macOS — signing${APPLE_ID:+ + notarizing}"
+            npx electron-builder --mac --arm64 $NOTARIZE
+          else
+            echo "::warning::macOS — no signing secrets, building UNSIGNED"
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64
+          fi
         env:
-          # Unsigned builds in CI (no certificates configured).
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Package installer (Windows)
+        if: runner.os == 'Windows'
+        # electron-builder signs when CSC_LINK is provided and silently skips
+        # signing when it is empty — no branching needed on Windows.
+        run: npx electron-builder --win --x64
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       - name: Attach installer to release
         uses: softprops/action-gh-release@v2
