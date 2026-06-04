@@ -320,6 +320,18 @@ export const ipcSchemas = {
       environment: z.enum(["development", "production"])
     })
   },
+  "window.openSettings": {
+    request: z.object({}),
+    response: z.object({
+      ok: z.boolean()
+    })
+  },
+  "window.closeCurrent": {
+    request: z.object({}),
+    response: z.object({
+      ok: z.boolean()
+    })
+  },
   "project.list": {
     request: z.object({}),
     response: z.object({

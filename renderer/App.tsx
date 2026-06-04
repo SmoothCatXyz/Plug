@@ -51,7 +51,6 @@ type BootstrapState = {
   toolEvents: ToolStreamEvent[];
   pendingApprovals: PendingToolApproval[];
   activeApprovalId: string | null;
-  settingsOpen: boolean;
   commandPaletteOpen: boolean;
   launcherNewProjectSignal: number;
   chatRunning: boolean;
@@ -74,7 +73,8 @@ export type CreateProjectDraft = {
 };
 
 export function App(): ReactElement {
-  const [startupVisible, setStartupVisible] = useState(true);
+  const isSettingsWindow = getRendererWindowKind() === "settings";
+  const [startupVisible, setStartupVisible] = useState(!isSettingsWindow);
   const hideStartup = useCallback((): void => {
     setStartupVisible(false);
   }, []);
@@ -99,7 +99,6 @@ export function App(): ReactElement {
     toolEvents: [],
     pendingApprovals: [],
     activeApprovalId: null,
-    settingsOpen: false,
     commandPaletteOpen: false,
     launcherNewProjectSignal: 0,
     chatRunning: false,
@@ -1000,6 +999,32 @@ export function App(): ReactElement {
     }));
   }, []);
 
+  const openSettingsWindow = useCallback(async (): Promise<void> => {
+    const plug = window.plug;
+
+    if (!plug) {
+      markBridgeUnavailable();
+      return;
+    }
+
+    try {
+      await plug.invoke("window.openSettings", {});
+      setState((current) => ({
+        ...current,
+        commandPaletteOpen: false,
+        statusMessage: "Settings opened.",
+        error: null
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown settings window error";
+      setState((current) => ({
+        ...current,
+        error: message,
+        statusMessage: null
+      }));
+    }
+  }, [markBridgeUnavailable]);
+
   useEffect(() => {
     if (startupVisible) {
       return;
@@ -1067,7 +1092,6 @@ export function App(): ReactElement {
             toolEvents: [],
             pendingApprovals: [],
             activeApprovalId: null,
-            settingsOpen: false,
             commandPaletteOpen: false,
             launcherNewProjectSignal: 0,
             chatRunning: false,
@@ -1078,7 +1102,7 @@ export function App(): ReactElement {
           });
 
           const activeProject = projectList.projects.find((project) => project.status === "active");
-          if (activeProject) {
+          if (activeProject && !isSettingsWindow) {
             void loadWorkspace(activeProject.id);
           }
         }
@@ -1098,7 +1122,7 @@ export function App(): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [loadWorkspace, startupVisible]);
+  }, [isSettingsWindow, loadWorkspace, startupVisible]);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent): void {
@@ -1130,12 +1154,7 @@ export function App(): ReactElement {
 
       if (key === ",") {
         event.preventDefault();
-        setState((current) => ({
-          ...current,
-          settingsOpen: true,
-          statusMessage: "Settings online.",
-          error: null
-        }));
+        void openSettingsWindow();
       }
 
       if (key === "k") {
@@ -1168,6 +1187,7 @@ export function App(): ReactElement {
   }, [
     createSession,
     openSession,
+    openSettingsWindow,
     registerProject,
     reloadProjects,
     showNewProjectWizard,
@@ -1188,8 +1208,7 @@ export function App(): ReactElement {
     onRegisterProject: registerProject,
     onRefreshProjects: reloadProjects,
     onOpenSettings: () => {
-      void reloadConfig();
-      setState((current) => ({ ...current, settingsOpen: true, statusMessage: "Settings online.", error: null }));
+      void openSettingsWindow();
     },
     onBackToLauncher: () =>
       setState((current) => ({
@@ -1224,7 +1243,7 @@ export function App(): ReactElement {
       }
     }
   });
-  const settingsPanel = state.settingsOpen ? (
+  const settingsPanel = (
     <SettingsPanel
       config={state.config}
       mcpServers={state.mcpServers}
@@ -1232,7 +1251,14 @@ export function App(): ReactElement {
       mcpHealthChecks={state.mcpHealthChecks}
       tokenSavings={state.tokenSavings}
       bridgeAvailable={state.bridgeAvailable}
-      onClose={() => setState((current) => ({ ...current, settingsOpen: false }))}
+      onClose={() => {
+        if (window.plug) {
+          void window.plug.invoke("window.closeCurrent", {});
+          return;
+        }
+
+        window.close();
+      }}
       onReloadConfig={reloadConfig}
       onReloadMcpServers={reloadMcpServers}
       onReloadTokenSavings={reloadTokenSavings}
@@ -1246,7 +1272,7 @@ export function App(): ReactElement {
       onDeleteMcpServer={deleteMcpServer}
       onCheckMcpHealth={checkMcpHealth}
     />
-  ) : null;
+  );
   const commandPalette = (
     <CommandPalette
       open={state.commandPaletteOpen}
@@ -1254,6 +1280,10 @@ export function App(): ReactElement {
       onClose={() => setState((current) => ({ ...current, commandPaletteOpen: false }))}
     />
   );
+
+  if (isSettingsWindow) {
+    return settingsPanel;
+  }
 
   if (state.workspace) {
     const activeProjectId = state.workspace.project.id;
@@ -1283,8 +1313,7 @@ export function App(): ReactElement {
           onOpenDocumentPath={(path, fromPath) => openWorkspaceDocumentPath(activeProjectId, path, fromPath)}
           onSaveDocument={(path, content) => saveWorkspaceDocument(activeProjectId, path, content)}
           onShowSettings={() => {
-            void reloadConfig();
-            setState((current) => ({ ...current, settingsOpen: true, statusMessage: "Settings online." }));
+            void openSettingsWindow();
           }}
           sessionSnapshot={state.sessionSnapshot}
           chatRunning={state.chatRunning}
@@ -1316,7 +1345,6 @@ export function App(): ReactElement {
           }
           thinkingByMessageId={state.thinkingByMessageId}
         />
-        {settingsPanel}
         {commandPalette}
         {startupVisible ? <StartupSplash onComplete={hideStartup} /> : null}
       </>
@@ -1340,17 +1368,23 @@ export function App(): ReactElement {
         onOpenProject={openProject}
         onRefreshProjects={reloadProjects}
         onShowSettings={() => {
-          void reloadConfig();
-          setState((current) => ({ ...current, settingsOpen: true, statusMessage: "Settings online." }));
+          void openSettingsWindow();
         }}
         onShowCommandPalette={() => setState((current) => ({ ...current, commandPaletteOpen: true }))}
         newProjectSignal={state.launcherNewProjectSignal}
       />
-      {settingsPanel}
       {commandPalette}
       {startupVisible ? <StartupSplash onComplete={hideStartup} /> : null}
     </>
   );
+}
+
+function getRendererWindowKind(): "main" | "settings" {
+  try {
+    return new URLSearchParams(window.location.search).get("window") === "settings" ? "settings" : "main";
+  } catch {
+    return "main";
+  }
 }
 
 type BuildCommandPaletteActionsInput = {

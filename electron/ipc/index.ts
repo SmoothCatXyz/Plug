@@ -10,10 +10,15 @@ import { registerProjectIpc } from "./project";
 import { registerRelayIpc } from "./relay";
 import { registerSessionIpc } from "./session";
 import { registerTokenSavingsIpc } from "./token-savings";
+import { registerWindowIpc } from "./window";
 import { registerWhisperIpc } from "./whisper";
 import { registerIpcHandler } from "./register";
 
-export function registerIpcHandlers(): void {
+type RegisterIpcHandlersOptions = {
+  openSettingsWindow: () => void;
+};
+
+export function registerIpcHandlers(options: RegisterIpcHandlersOptions): void {
   registerIpcHandler("app.info", () => ({
     name: APP_NAME,
     version: app.getVersion(),
@@ -30,5 +35,6 @@ export function registerIpcHandlers(): void {
   registerPromptAppIpc();
   registerRelayIpc();
   registerTokenSavingsIpc();
+  registerWindowIpc(options);
   registerWhisperIpc();
 }

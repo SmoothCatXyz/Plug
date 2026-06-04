@@ -1028,14 +1028,10 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings">
+    <div className="settings-window-root" role="application" aria-label="Settings">
       <HUDPanel className="settings-panel settings-panel--workspace" label="Plug settings" active>
         <aside className="settings-sidebar" aria-label="Settings sections">
-          <div className="settings-window-controls" aria-hidden="true">
-            <span className="settings-window-dot settings-window-dot--red" />
-            <span className="settings-window-dot settings-window-dot--yellow" />
-            <span className="settings-window-dot settings-window-dot--green" />
-          </div>
+          <div className="settings-window-controls" aria-hidden="true" />
 
           <nav className="settings-nav">
             {settingsSections.map((section) => (

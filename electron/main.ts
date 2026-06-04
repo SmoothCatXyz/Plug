@@ -12,6 +12,7 @@ if (process.platform === "darwin") {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 
 function resolvePreloadPath(): string {
   const esmPreloadPath = join(__dirname, "../preload/preload.mjs");
@@ -38,6 +39,30 @@ function applyDockIcon(): void {
   if (iconPath && process.platform === "darwin") {
     app.dock?.setIcon(iconPath);
   }
+}
+
+function loadRendererWindow(window: BrowserWindow, kind: "main" | "settings"): void {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
+    const url = new URL(process.env.ELECTRON_RENDERER_URL);
+
+    if (kind === "settings") {
+      url.searchParams.set("window", "settings");
+    } else {
+      url.searchParams.delete("window");
+    }
+
+    void window.loadURL(url.toString());
+    return;
+  }
+
+  const rendererPath = join(__dirname, "../renderer/index.html");
+
+  if (kind === "settings") {
+    void window.loadFile(rendererPath, { query: { window: "settings" } });
+    return;
+  }
+
+  void window.loadFile(rendererPath);
 }
 
 function createMainWindow(): void {
@@ -69,19 +94,66 @@ function createMainWindow(): void {
     mainWindow?.show();
   });
 
-  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-  } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
-  }
+  loadRendererWindow(mainWindow, "main");
 
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
+function openSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) {
+      settingsWindow.restore();
+    }
+
+    settingsWindow.show();
+    settingsWindow.focus();
+    return;
+  }
+
+  const windowOptions: BrowserWindowConstructorOptions = {
+    width: 1180,
+    height: 840,
+    minWidth: 980,
+    minHeight: 680,
+    title: `${APP_NAME} Settings`,
+    backgroundColor: "#252A33",
+    show: false,
+    webPreferences: {
+      preload: resolvePreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  };
+
+  if (process.platform === "darwin") {
+    windowOptions.titleBarStyle = "hiddenInset";
+    windowOptions.trafficLightPosition = { x: 24, y: 24 };
+  }
+
+  const iconPath = resolveAppIconPath();
+
+  if (iconPath) {
+    windowOptions.icon = iconPath;
+  }
+
+  settingsWindow = new BrowserWindow(windowOptions);
+
+  settingsWindow.once("ready-to-show", () => {
+    settingsWindow?.show();
+  });
+
+  loadRendererWindow(settingsWindow, "settings");
+
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
+}
+
 void app.whenReady().then(() => {
-  registerIpcHandlers();
+  registerIpcHandlers({ openSettingsWindow });
   startRelayServer();
   void ensurePluginsDir();
   applyDockIcon();
