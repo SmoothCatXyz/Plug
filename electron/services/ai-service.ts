@@ -31,7 +31,12 @@ import { indexProjectDocument } from "../tools/document-index";
 import { readProjectManifest } from "../tools/project-files";
 import { resolveDocumentOpenIntent } from "./document-intent";
 import { PRD_AUTHORING_GUIDE } from "../tools/prd-template";
-import { toLanguageModel as toModel, MINIMAL_REASONING, type ProviderSecret as PS } from "./provider-utils";
+import {
+  lowReasoningOptions,
+  minimalReasoningOptions,
+  toLanguageModel as toModel,
+  type ProviderSecret as PS
+} from "./provider-utils";
 
 type OpenAiChatCompletionResponse = {
   id?: string;
@@ -270,6 +275,9 @@ export async function streamChatResponse(
       : toLanguageModel(providerSecret);
 
     let providerStreamError: unknown = null;
+    // Tool orchestration needs some planning, but vendor-compatible endpoints
+    // should not receive OpenAI-only reasoning controls.
+    const providerOptions = thinkingEnabled ? undefined : lowReasoningOptions(providerSecret);
     const result = streamText({
       model,
       system: systemPrompt,
@@ -287,12 +295,9 @@ export async function streamChatResponse(
               }
             }
           }
-        : {
-            // Tool orchestration needs *some* planning but not deep chains of
-            // thought — "low" effort keeps multi-step routing while cutting the
-            // per-step first-token latency (the bulk of a simple action's time).
-            providerOptions: { openaiCompatible: { reasoningEffort: "low" } }
-          }),
+        : providerOptions
+          ? { providerOptions }
+          : {}),
       onError: (event) => {
         providerStreamError = event.error;
       }
@@ -1080,10 +1085,11 @@ async function streamActionConfirmation(input: {
   providerSecret: PS;
   emit: (event: ChatStreamEvent) => void;
 }): Promise<string> {
+  const providerOptions = minimalReasoningOptions(input.providerSecret);
   const result = streamText({
     model: toLanguageModel(input.providerSecret),
     // A confirmation needs no reasoning — keep it instant.
-    providerOptions: MINIMAL_REASONING,
+    ...(providerOptions ? { providerOptions } : {}),
     maxOutputTokens: 256,
     system: withPersona(
       [

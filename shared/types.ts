@@ -121,6 +121,7 @@ export type NetworkConfig = {
 export type AppConfigSnapshot = {
   configPath: string;
   providers: ProviderSummary[];
+  chatModel: ToolModelSelection;
   toolModel: ToolModelSelection;
   network: NetworkConfig;
 };

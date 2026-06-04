@@ -11,6 +11,12 @@ import type {
   ProviderTestResult,
   ToolModelSelection
 } from "../../shared/types";
+import type { ProviderPreset } from "../../shared/provider-presets";
+import {
+  defaultProviderPreset,
+  providerDraftFromPreset,
+  providerPresets
+} from "../../shared/provider-presets";
 import { HUDPanel, NumericText, StatusDot } from "../components/hud";
 import "./settings.css";
 
@@ -25,6 +31,7 @@ type SettingsPanelProps = {
   onReloadMcpServers: () => Promise<McpServerConfig[]>;
   onUpsertProvider: (draft: ProviderDraft) => Promise<void>;
   onDeleteProvider: (id: string) => Promise<void>;
+  onSetChatModel: (selection: ToolModelSelection) => Promise<void>;
   onSetToolModel: (selection: ToolModelSelection) => Promise<void>;
   onSetNetwork: (network: NetworkConfig) => Promise<void>;
   onTestProvider: (providerId: string, modelId?: string) => Promise<ProviderTestResult>;
@@ -33,12 +40,13 @@ type SettingsPanelProps = {
   onCheckMcpHealth: (id?: string) => Promise<McpServerHealth[]>;
 };
 
+const NEW_CUSTOM_PROVIDER_CATALOG_ID = "provider:new";
 const newProviderDraft: ProviderDraft = {
-  label: "DeepSeek",
+  label: "Custom Provider",
   type: "openai-compatible",
-  baseURL: "https://api.deepseek.com/v1",
-  models: ["deepseek-chat", "deepseek-reasoner"],
-  defaultModel: "deepseek-chat",
+  baseURL: "",
+  models: ["model-id"],
+  defaultModel: "model-id",
   proxyMode: "global",
   proxyUrl: "",
   apiKey: ""
@@ -55,6 +63,62 @@ const newMcpDraft: McpServerDraft = {
   timeoutMs: 10000
 };
 
+type SettingsSectionId =
+  | "general"
+  | "providers"
+  | "agents"
+  | "channels"
+  | "projects"
+  | "chat"
+  | "token-savings"
+  | "prompts"
+  | "memory"
+  | "activity-recorder"
+  | "computer-use"
+  | "appshots"
+  | "mcp-servers"
+  | "skills"
+  | "plugins"
+  | "hooks"
+  | "speech";
+
+type SettingsSection = {
+  id: SettingsSectionId;
+  label: string;
+  icon: string;
+};
+
+type ProviderCatalogItem = {
+  id: string;
+  label: string;
+  summary: string;
+  baseURL: string;
+  models: readonly string[];
+  defaultModel: string;
+  preset: ProviderPreset | null;
+  provider: ProviderSummary | null;
+};
+
+const settingsSections: SettingsSection[] = [
+  { id: "general", label: "General", icon: "GE" },
+  { id: "providers", label: "Providers", icon: "PR" },
+  { id: "agents", label: "Agents", icon: "AG" },
+  { id: "channels", label: "Channels", icon: "CH" },
+  { id: "projects", label: "Projects", icon: "PJ" },
+  { id: "chat", label: "Chat", icon: "CT" },
+  { id: "token-savings", label: "Token Savings", icon: "TS" },
+  { id: "prompts", label: "Prompts", icon: "PM" },
+  { id: "memory", label: "Memory", icon: "MY" },
+  { id: "activity-recorder", label: "Activity Recorder", icon: "AR" },
+  { id: "computer-use", label: "Computer Use", icon: "CU" },
+  { id: "appshots", label: "Appshots", icon: "AS" },
+  { id: "mcp-servers", label: "MCP Servers", icon: "MC" },
+  { id: "skills", label: "Skills", icon: "SK" },
+  { id: "plugins", label: "Plugins", icon: "PL" },
+  { id: "hooks", label: "Hooks", icon: "HK" },
+  { id: "speech", label: "Speech", icon: "SP" }
+];
+
 export function SettingsPanel({
   config,
   mcpServers,
@@ -66,6 +130,7 @@ export function SettingsPanel({
   onReloadMcpServers,
   onUpsertProvider,
   onDeleteProvider,
+  onSetChatModel,
   onSetToolModel,
   onSetNetwork,
   onTestProvider,
@@ -73,22 +138,53 @@ export function SettingsPanel({
   onDeleteMcpServer,
   onCheckMcpHealth
 }: SettingsPanelProps): ReactElement {
-  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
-  const [selectedMcpId, setSelectedMcpId] = useState<string>("");
-  const selectedProvider = useMemo(
-    () => config?.providers.find((provider) => provider.id === selectedProviderId) ?? config?.providers[0] ?? null,
-    [config?.providers, selectedProviderId]
+  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>("general");
+  const [selectedProviderCatalogId, setSelectedProviderCatalogId] = useState<string>(
+    `preset:${defaultProviderPreset.id}`
   );
+  const [selectedMcpId, setSelectedMcpId] = useState<string>("");
+  const [providerSearch, setProviderSearch] = useState("");
+  const activeSection =
+    settingsSections.find((section) => section.id === activeSectionId) ?? settingsSections[0];
+  const providerCatalog = useMemo(
+    () => buildProviderCatalog(config?.providers ?? []),
+    [config?.providers]
+  );
+  const selectedProviderCatalogItem = useMemo(
+    () => {
+      if (selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID) {
+        return null;
+      }
+
+      return providerCatalog.find((provider) => provider.id === selectedProviderCatalogId) ?? providerCatalog[0] ?? null;
+    },
+    [providerCatalog, selectedProviderCatalogId]
+  );
+  const selectedProvider = selectedProviderCatalogItem?.provider ?? null;
   const selectedMcpServer = useMemo(
     () => mcpServers.find((server) => server.id === selectedMcpId) ?? mcpServers[0] ?? null,
     [mcpServers, selectedMcpId]
   );
+  const visibleProviders = useMemo(() => {
+    const query = providerSearch.trim().toLowerCase();
+
+    if (!query) {
+      return providerCatalog;
+    }
+
+    return providerCatalog.filter((provider) =>
+      [provider.label, provider.defaultModel, provider.baseURL, provider.summary].some((value) =>
+        value.toLowerCase().includes(query)
+      )
+    );
+  }, [providerCatalog, providerSearch]);
   const [providerDraft, setProviderDraft] = useState<ProviderDraft>(newProviderDraft);
   const [mcpDraft, setMcpDraft] = useState<McpServerDraft>(newMcpDraft);
   const [modelsText, setModelsText] = useState(newProviderDraft.models.join(", "));
   const [mcpArgsText, setMcpArgsText] = useState("");
   const [mcpEnvText, setMcpEnvText] = useState("");
   const [networkDraft, setNetworkDraft] = useState<NetworkConfig | null>(null);
+  const [chatModelDraft, setChatModelDraft] = useState<ToolModelSelection | null>(null);
   const [toolModelDraft, setToolModelDraft] = useState<ToolModelSelection | null>(null);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -108,16 +204,36 @@ export function SettingsPanel({
       return;
     }
 
-    const provider = selectedProvider ?? config.providers[0];
-    setSelectedProviderId(provider?.id ?? "");
     setNetworkDraft(config.network);
+    setChatModelDraft(config.chatModel);
     setToolModelDraft(config.toolModel);
+  }, [config]);
 
-    if (provider) {
-      setProviderDraft(toDraft(provider));
-      setModelsText(provider.models.join(", "));
+  useEffect(() => {
+    if (selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID || !providerCatalog.length) {
+      return;
     }
-  }, [config, selectedProvider]);
+
+    if (!providerCatalog.some((provider) => provider.id === selectedProviderCatalogId)) {
+      setSelectedProviderCatalogId(providerCatalog[0]?.id ?? `preset:${defaultProviderPreset.id}`);
+    }
+  }, [providerCatalog, selectedProviderCatalogId]);
+
+  useEffect(() => {
+    if (selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID) {
+      return;
+    }
+
+    if (!selectedProviderCatalogItem) {
+      return;
+    }
+
+    const draft = toCatalogDraft(selectedProviderCatalogItem);
+    setProviderDraft(draft);
+    setModelsText(draft.models.join(", "));
+    setTestResult(null);
+    setLocalError(null);
+  }, [selectedProviderCatalogId, selectedProviderCatalogItem]);
 
   useEffect(() => {
     const server = selectedMcpServer ?? mcpServers[0];
@@ -142,14 +258,33 @@ export function SettingsPanel({
 
     try {
       const models = parseModels(modelsText);
-      await onUpsertProvider({
+      const wasNewCustomProvider = selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID;
+      const savedDraft = {
         ...providerDraft,
         models,
         defaultModel: models.includes(providerDraft.defaultModel) ? providerDraft.defaultModel : models[0],
         apiKey: providerDraft.apiKey?.trim() || undefined
+      };
+
+      await onUpsertProvider({
+        ...savedDraft,
+        label: savedDraft.label.trim(),
+        baseURL: savedDraft.baseURL.trim()
       });
       setProviderDraft((current) => ({ ...current, apiKey: "" }));
       setTestResult(null);
+
+      if (wasNewCustomProvider) {
+        const nextConfig = await onReloadConfig();
+        const savedProvider = nextConfig?.providers.find(
+          (provider) =>
+            provider.label === savedDraft.label.trim() &&
+            normalizeProviderBaseURL(provider.baseURL) === normalizeProviderBaseURL(savedDraft.baseURL)
+        );
+        if (savedProvider) {
+          setSelectedProviderCatalogId(`provider:${savedProvider.id}`);
+        }
+      }
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : "Provider save failed.");
     } finally {
@@ -167,7 +302,6 @@ export function SettingsPanel({
 
     try {
       await onDeleteProvider(selectedProvider.id);
-      setSelectedProviderId("");
       setTestResult(null);
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : "Provider delete failed.");
@@ -193,6 +327,23 @@ export function SettingsPanel({
     }
   }
 
+  async function handleSaveChatModel(): Promise<void> {
+    if (!chatModelDraft) {
+      return;
+    }
+
+    setBusyLabel("Saving chat model");
+    setLocalError(null);
+
+    try {
+      await onSetChatModel(chatModelDraft);
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Chat model save failed.");
+    } finally {
+      setBusyLabel(null);
+    }
+  }
+
   async function handleSaveNetwork(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -213,8 +364,8 @@ export function SettingsPanel({
   }
 
   async function handleTestProvider(): Promise<void> {
-    const providerId = toolModelDraft?.providerId || selectedProvider?.id;
-    const modelId = toolModelDraft?.modelId || selectedProvider?.defaultModel;
+    const providerId = selectedProvider?.id;
+    const modelId = selectedProvider?.defaultModel;
 
     if (!providerId) {
       return;
@@ -286,426 +437,720 @@ export function SettingsPanel({
     }
   }
 
-  return (
-    <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings">
-      <HUDPanel className="settings-panel" label="Plug settings" active>
-        <header className="settings-panel__header">
-          <div>
-            <span className="hud-label">Settings</span>
-            <h2>Providers / Network / Tool Model</h2>
+  function renderGeneralSection(): ReactElement {
+    return (
+      <div className="settings-section-stack">
+        <section className="settings-card">
+          <div className="settings-section-head settings-section-head--large">
+            <div>
+              <span className="hud-label">Model Routing</span>
+              <h3>Chat / Tool Model</h3>
+            </div>
+            <StatusDot status="pending" label="global" />
           </div>
-          <button className="hud-button" type="button" onClick={onClose}>
-            Close
-          </button>
-        </header>
 
-        <div className="settings-panel__body">
-          <aside className="settings-provider-list" aria-label="Providers">
-            <div className="settings-section-head">
-              <span className="hud-label">Providers</span>
-              <button
-                className="hud-link-button"
-                type="button"
-                onClick={() => {
-                  setSelectedProviderId("");
-                  setProviderDraft(newProviderDraft);
-                  setModelsText(newProviderDraft.models.join(", "));
-                  setTestResult(null);
-                }}
-              >
-                New
+          <div className="settings-route-list settings-route-list--two">
+            <ModelRouteEditor
+              label="Chat Model"
+              config={config}
+              selection={chatModelDraft}
+              onProviderChange={(providerId) => setChatModelDraft(modelSelectionForProvider(config, providerId))}
+              onModelChange={(modelId) =>
+                setChatModelDraft((current) => (current ? { ...current, modelId } : current))
+              }
+            />
+            <ModelRouteEditor
+              label="Tool Model"
+              config={config}
+              selection={toolModelDraft}
+              onProviderChange={(providerId) => setToolModelDraft(modelSelectionForProvider(config, providerId))}
+              onModelChange={(modelId) =>
+                setToolModelDraft((current) => (current ? { ...current, modelId } : current))
+              }
+            />
+          </div>
+
+          <div className="settings-actions settings-actions--split">
+            <button
+              className="hud-button hud-button--primary"
+              type="button"
+              disabled={!chatModelDraft || !bridgeAvailable || Boolean(busyLabel)}
+              onClick={() => void handleSaveChatModel()}
+            >
+              Save Chat
+            </button>
+            <button
+              className="hud-button hud-button--primary"
+              type="button"
+              disabled={!toolModelDraft || !bridgeAvailable || Boolean(busyLabel)}
+              onClick={() => void handleSaveToolModel()}
+            >
+              Save Tool
+            </button>
+          </div>
+        </section>
+
+        {networkDraft ? (
+          <form className="settings-card" onSubmit={(event) => void handleSaveNetwork(event)}>
+            <div className="settings-section-head settings-section-head--large">
+              <div>
+                <span className="hud-label">Network</span>
+                <h3>Connection</h3>
+              </div>
+              <NumericText muted>{`${networkDraft.maxRetries} retry`}</NumericText>
+            </div>
+
+            <div className="settings-grid settings-grid--three">
+              <label className="hud-field">
+                <span>Proxy</span>
+                <select
+                  value={networkDraft.proxyMode}
+                  onChange={(event) =>
+                    setNetworkDraft((current) =>
+                      current ? { ...current, proxyMode: event.target.value as NetworkConfig["proxyMode"] } : current
+                    )
+                  }
+                >
+                  <option value="off">Off</option>
+                  <option value="http">HTTP</option>
+                  <option value="socks5">SOCKS5</option>
+                </select>
+              </label>
+              <label className="hud-field hud-field--wide-2">
+                <span>Proxy URL</span>
+                <input
+                  value={networkDraft.proxyUrl}
+                  disabled={networkDraft.proxyMode === "off"}
+                  onChange={(event) =>
+                    setNetworkDraft((current) => (current ? { ...current, proxyUrl: event.target.value } : current))
+                  }
+                />
+              </label>
+              <NumberField label="Timeout" value={networkDraft.timeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, timeoutMs: value } : current)} />
+              <NumberField label="Long Timeout" value={networkDraft.longTimeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, longTimeoutMs: value } : current)} />
+              <NumberField label="Retries" value={networkDraft.maxRetries} onChange={(value) => setNetworkDraft((current) => current ? { ...current, maxRetries: value } : current)} />
+              <NumberField label="Backoff" value={networkDraft.retryBaseDelayMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, retryBaseDelayMs: value } : current)} />
+            </div>
+
+            <div className="settings-actions">
+              <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
+                Save Network
               </button>
             </div>
+          </form>
+        ) : null}
+      </div>
+    );
+  }
 
-            {config?.providers.map((provider) => (
-              <ProviderButton
-                key={provider.id}
-                provider={provider}
-                active={provider.id === selectedProvider?.id}
-                onSelect={() => setSelectedProviderId(provider.id)}
-              />
-            ))}
-          </aside>
+  function renderProviderForm(): ReactElement {
+    const isNewCustomProvider = selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID;
+    const status = providerCatalogStatus(selectedProviderCatalogItem, isNewCustomProvider);
+    const modelOptions = modelOptionsFromText(modelsText, providerDraft.defaultModel);
+    const title = isNewCustomProvider ? providerDraft.label || "Custom Provider" : selectedProviderCatalogItem?.label ?? "Provider";
+    const summary = isNewCustomProvider
+      ? "Custom OpenAI-compatible endpoint."
+      : selectedProviderCatalogItem?.summary ?? "OpenAI-compatible endpoint.";
+    const primaryAction = !selectedProvider
+      ? "Enable Provider"
+      : selectedProvider.hasApiKey
+        ? "Save Changes"
+        : "Save API Key";
 
-          <section className="settings-editor" aria-label="Provider editor">
-            <form className="settings-card" onSubmit={(event) => void handleSaveProvider(event)}>
-              <div className="settings-section-head">
-                <span className="hud-label">Model Connector</span>
-                <StatusDot status={providerDraft.apiKey || selectedProvider?.hasApiKey ? "complete" : "waiting"} label="api key" />
-              </div>
-
-              <div className="settings-grid">
-                <label className="hud-field">
-                  <span>Label</span>
-                  <input
-                    value={providerDraft.label}
-                    onChange={(event) => setProviderDraft((current) => ({ ...current, label: event.target.value }))}
-                  />
-                </label>
-                <label className="hud-field">
-                  <span>Base URL</span>
-                  <input
-                    value={providerDraft.baseURL}
-                    onChange={(event) => setProviderDraft((current) => ({ ...current, baseURL: event.target.value }))}
-                  />
-                </label>
-                <label className="hud-field hud-field--wide">
-                  <span>Models</span>
-                  <input value={modelsText} onChange={(event) => setModelsText(event.target.value)} />
-                </label>
-                <label className="hud-field">
-                  <span>Default Model</span>
-                  <input
-                    value={providerDraft.defaultModel}
-                    onChange={(event) => setProviderDraft((current) => ({ ...current, defaultModel: event.target.value }))}
-                  />
-                </label>
-                <label className="hud-field">
-                  <span>API Key</span>
-                  <input
-                    type="password"
-                    value={providerDraft.apiKey ?? ""}
-                    placeholder={selectedProvider?.hasApiKey ? "configured" : ""}
-                    onChange={(event) => setProviderDraft((current) => ({ ...current, apiKey: event.target.value }))}
-                  />
-                </label>
-                <label className="hud-field">
-                  <span>Provider Proxy</span>
-                  <select
-                    value={providerDraft.proxyMode}
-                    onChange={(event) =>
-                      setProviderDraft((current) => ({
-                        ...current,
-                        proxyMode: event.target.value as ProviderDraft["proxyMode"]
-                      }))
-                    }
-                  >
-                    <option value="global">Global</option>
-                    <option value="off">Off</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </label>
-                <label className="hud-field">
-                  <span>Proxy URL</span>
-                  <input
-                    value={providerDraft.proxyUrl}
-                    disabled={providerDraft.proxyMode !== "custom"}
-                    onChange={(event) => setProviderDraft((current) => ({ ...current, proxyUrl: event.target.value }))}
-                  />
-                </label>
-              </div>
-
-              <div className="settings-actions">
-                <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-                  Save Provider
-                </button>
-                <button
-                  className="hud-button"
-                  type="button"
-                  disabled={!selectedProvider || !bridgeAvailable || Boolean(busyLabel)}
-                  onClick={() => void handleDeleteProvider()}
-                >
-                  Delete
-                </button>
-              </div>
-            </form>
-
-            <section className="settings-card">
-              <div className="settings-section-head">
-                <span className="hud-label">Tool Model</span>
-                <button className="hud-link-button" type="button" onClick={() => void handleTestProvider()}>
-                  Test
-                </button>
-              </div>
-
-              <div className="settings-grid settings-grid--two">
-                <label className="hud-field">
-                  <span>Provider</span>
-                  <select
-                    value={toolModelDraft?.providerId ?? ""}
-                    onChange={(event) => {
-                      const provider = config?.providers.find((entry) => entry.id === event.target.value);
-                      setToolModelDraft({
-                        providerId: event.target.value,
-                        modelId: provider?.defaultModel ?? provider?.models[0] ?? ""
-                      });
-                    }}
-                  >
-                    {config?.providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="hud-field">
-                  <span>Model</span>
-                  <select
-                    value={toolModelDraft?.modelId ?? ""}
-                    onChange={(event) =>
-                      setToolModelDraft((current) =>
-                        current ? { ...current, modelId: event.target.value } : current
-                      )
-                    }
-                  >
-                    {modelsForToolModel(config, toolModelDraft).map((model) => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="settings-actions">
-                <button className="hud-button hud-button--primary" type="button" onClick={() => void handleSaveToolModel()}>
-                  Save Tool Model
-                </button>
-              </div>
-            </section>
-
-            {networkDraft ? (
-              <form className="settings-card" onSubmit={(event) => void handleSaveNetwork(event)}>
-                <div className="settings-section-head">
-                  <span className="hud-label">Network</span>
-                  <NumericText muted>{`${networkDraft.maxRetries} retry`}</NumericText>
-                </div>
-
-                <div className="settings-grid settings-grid--three">
-                  <label className="hud-field">
-                    <span>Proxy</span>
-                    <select
-                      value={networkDraft.proxyMode}
-                      onChange={(event) =>
-                        setNetworkDraft((current) =>
-                          current
-                            ? { ...current, proxyMode: event.target.value as NetworkConfig["proxyMode"] }
-                            : current
-                        )
-                      }
-                    >
-                      <option value="off">Off</option>
-                      <option value="http">HTTP</option>
-                      <option value="socks5">SOCKS5</option>
-                    </select>
-                  </label>
-                  <label className="hud-field hud-field--wide-2">
-                    <span>Proxy URL</span>
-                    <input
-                      value={networkDraft.proxyUrl}
-                      disabled={networkDraft.proxyMode === "off"}
-                      onChange={(event) =>
-                        setNetworkDraft((current) => (current ? { ...current, proxyUrl: event.target.value } : current))
-                      }
-                    />
-                  </label>
-                  <NumberField label="Timeout" value={networkDraft.timeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, timeoutMs: value } : current)} />
-                  <NumberField label="Long Timeout" value={networkDraft.longTimeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, longTimeoutMs: value } : current)} />
-                  <NumberField label="Retries" value={networkDraft.maxRetries} onChange={(value) => setNetworkDraft((current) => current ? { ...current, maxRetries: value } : current)} />
-                  <NumberField label="Backoff" value={networkDraft.retryBaseDelayMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, retryBaseDelayMs: value } : current)} />
-                </div>
-
-                <div className="settings-actions">
-                  <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-                    Save Network
-                  </button>
-                </div>
-              </form>
-            ) : null}
-
-            <form className="settings-card" onSubmit={(event) => void handleSaveMcpServer(event)}>
-              <div className="settings-section-head">
-                <span className="hud-label">MCP Servers</span>
-                <button
-                  className="hud-link-button"
-                  type="button"
-                  onClick={() => {
-                    setSelectedMcpId("");
-                    setMcpDraft(newMcpDraft);
-                    setMcpArgsText("");
-                    setMcpEnvText("");
-                  }}
-                >
-                  New
-                </button>
-              </div>
-
-              <div className="settings-mcp-list">
-                {mcpServers.length ? (
-                  mcpServers.map((server) => (
-                    <button
-                      className={["settings-mcp-row", server.id === selectedMcpServer?.id ? "settings-mcp-row--active" : ""].filter(Boolean).join(" ")}
-                      key={server.id}
-                      type="button"
-                      onClick={() => setSelectedMcpId(server.id)}
-                    >
-                      <span>⬢</span>
-                      <strong>{server.label}</strong>
-                      <em>{server.enabled ? `${server.transport} · ${server.aiWriteLevel}` : "disabled"}</em>
-                    </button>
-                  ))
-                ) : (
-                  <div className="settings-mcp-empty">NO MCP SERVERS</div>
-                )}
-              </div>
-
-              <div className="settings-grid settings-grid--three">
-                <label className="hud-field">
-                  <span>Label</span>
-                  <input
-                    value={mcpDraft.label}
-                    onChange={(event) => setMcpDraft((current) => ({ ...current, label: event.target.value }))}
-                  />
-                </label>
-                <label className="hud-field">
-                  <span>Enabled</span>
-                  <select
-                    value={mcpDraft.enabled ? "yes" : "no"}
-                    onChange={(event) => setMcpDraft((current) => ({ ...current, enabled: event.target.value === "yes" }))}
-                  >
-                    <option value="yes">Enabled</option>
-                    <option value="no">Disabled</option>
-                  </select>
-                </label>
-                <label className="hud-field">
-                  <span>AI Write</span>
-                  <select
-                    value={mcpDraft.aiWriteLevel}
-                    onChange={(event) =>
-                      setMcpDraft((current) => ({ ...current, aiWriteLevel: event.target.value as McpServerDraft["aiWriteLevel"] }))
-                    }
-                  >
-                    <option value="read">Read</option>
-                    <option value="auto">Auto</option>
-                    <option value="confirm">Confirm</option>
-                  </select>
-                </label>
-                <label className="hud-field hud-field--wide-2">
-                  <span>Command</span>
-                  <input
-                    value={mcpDraft.command}
-                    onChange={(event) => setMcpDraft((current) => ({ ...current, command: event.target.value }))}
-                  />
-                </label>
-                <NumberField label="Timeout" value={mcpDraft.timeoutMs} onChange={(value) => setMcpDraft((current) => ({ ...current, timeoutMs: value }))} />
-                <label className="hud-field hud-field--wide">
-                  <span>Args</span>
-                  <textarea
-                    value={mcpArgsText}
-                    placeholder="/path/to/server.js"
-                    onChange={(event) => setMcpArgsText(event.target.value)}
-                  />
-                </label>
-                <label className="hud-field hud-field--wide">
-                  <span>Env</span>
-                  <textarea
-                    value={mcpEnvText}
-                    placeholder="API_KEY=value"
-                    onChange={(event) => setMcpEnvText(event.target.value)}
-                  />
-                </label>
-              </div>
-
-              <div className="settings-actions">
-                <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-                  Save MCP
-                </button>
-                <button
-                  className="hud-button"
-                  type="button"
-                  disabled={!selectedMcpServer || !bridgeAvailable || Boolean(busyLabel)}
-                  onClick={() => void handleCheckMcpHealth(selectedMcpServer?.id)}
-                >
-                  Health
-                </button>
-                <button
-                  className="hud-button"
-                  type="button"
-                  disabled={!selectedMcpServer || !bridgeAvailable || Boolean(busyLabel)}
-                  onClick={() => void handleDeleteMcpServer()}
-                >
-                  Delete
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <aside className="settings-test-panel" aria-label="Provider test result">
-            <div className="settings-section-head">
-              <span className="hud-label">Test Bus</span>
-              <StatusDot status={busyLabel ? "running" : testResult?.ok ? "complete" : testResult ? "error" : "pending"} label={busyLabel ?? "idle"} />
+    return (
+      <form className="settings-card settings-provider-detail-card" onSubmit={(event) => void handleSaveProvider(event)}>
+        <div className="settings-provider-hero">
+          <div className="settings-provider-identity">
+            <div className="settings-provider-logo" aria-hidden="true">
+              {providerInitials(title)}
             </div>
-
-            {testResult ? (
-              <div className="settings-test-result">
-                <strong>{testResult.ok ? "PASS" : "FAIL"}</strong>
-                <p>{testResult.message}</p>
-                <NumericText muted>{`${testResult.durationMs}ms`}</NumericText>
-                <ol>
-                  {testResult.attempts.map((attempt) => (
-                    <li key={attempt.attempt}>
-                      <span>{attempt.status}</span>
-                      <em>{attempt.message}</em>
-                      <NumericText muted>{`${attempt.durationMs}ms`}</NumericText>
-                    </li>
-                  ))}
-                </ol>
+            <div>
+              <div className="settings-provider-title-row">
+                <h3>{title}</h3>
+                <span className={`settings-provider-badge settings-provider-badge--${status.tone}`}>
+                  {status.label}
+                </span>
               </div>
-            ) : (
-              <div className="settings-test-empty">NO TEST RUN</div>
-            )}
-
-            <div className="settings-mcp-health">
-              <div className="settings-section-head">
-                <span className="hud-label">MCP Health</span>
-                <button className="hud-link-button" type="button" disabled={!bridgeAvailable || Boolean(busyLabel)} onClick={() => void handleCheckMcpHealth()}>
-                  Check All
-                </button>
-              </div>
-              {mcpHealthChecks.length ? (
-                <ol>
-                  {mcpHealthChecks.map((check) => (
-                    <li key={check.serverId}>
-                      <StatusDot status={check.ok ? "complete" : check.enabled ? "error" : "waiting"} label={check.ok ? "ok" : "blocked"} />
-                      <strong>{check.label}</strong>
-                      <em>{`${check.toolCount} tools`}</em>
-                      <p>{check.message}</p>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="settings-test-empty">NO MCP CHECK</div>
-              )}
+              <p>{summary}</p>
             </div>
+          </div>
 
-            {localError ? <p className="settings-error">{localError}</p> : null}
-            <p className="settings-config-path">{`${config?.configPath ?? "~/.plug/config.json"} · ${mcpConfigPath ?? "~/.plug/mcp.json"}`}</p>
-          </aside>
+          <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
+            {primaryAction}
+          </button>
         </div>
+
+        <div className="settings-provider-facts">
+          <div>
+            <span>Base URL</span>
+            <strong>{providerDraft.baseURL || "Not set"}</strong>
+          </div>
+          <div>
+            <span>Default Model</span>
+            <strong>{providerDraft.defaultModel || modelOptions[0] || "Not set"}</strong>
+          </div>
+          <div>
+            <span>Models</span>
+            <strong>{modelOptions.length}</strong>
+          </div>
+        </div>
+
+        <div className="settings-provider-setup">
+          <label className="hud-field">
+            <span>API Key</span>
+            <input
+              type="password"
+              value={providerDraft.apiKey ?? ""}
+              placeholder={selectedProvider?.hasApiKey ? "configured" : "Enter API key"}
+              onChange={(event) => setProviderDraft((current) => ({ ...current, apiKey: event.target.value }))}
+            />
+          </label>
+          <label className="hud-field">
+            <span>Default Model</span>
+            <select
+              value={providerDraft.defaultModel}
+              onChange={(event) => setProviderDraft((current) => ({ ...current, defaultModel: event.target.value }))}
+            >
+              {modelOptions.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="hud-field">
+            <span>Provider Proxy</span>
+            <select
+              value={providerDraft.proxyMode}
+              onChange={(event) =>
+                setProviderDraft((current) => ({
+                  ...current,
+                  proxyMode: event.target.value as ProviderDraft["proxyMode"]
+                }))
+              }
+            >
+              <option value="global">Global</option>
+              <option value="off">Off</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label className="hud-field">
+            <span>Proxy URL</span>
+            <input
+              value={providerDraft.proxyUrl}
+              disabled={providerDraft.proxyMode !== "custom"}
+              onChange={(event) => setProviderDraft((current) => ({ ...current, proxyUrl: event.target.value }))}
+            />
+          </label>
+        </div>
+
+        <details className="settings-provider-advanced">
+          <summary>Endpoint settings</summary>
+          <div className="settings-grid">
+            <label className="hud-field">
+              <span>Label</span>
+              <input
+                value={providerDraft.label}
+                onChange={(event) => setProviderDraft((current) => ({ ...current, label: event.target.value }))}
+              />
+            </label>
+            <label className="hud-field">
+              <span>Base URL</span>
+              <input
+                value={providerDraft.baseURL}
+                onChange={(event) => setProviderDraft((current) => ({ ...current, baseURL: event.target.value }))}
+              />
+            </label>
+            <label className="hud-field hud-field--wide">
+              <span>Models</span>
+              <input value={modelsText} onChange={(event) => setModelsText(event.target.value)} />
+            </label>
+          </div>
+        </details>
+
+        <div className="settings-actions">
+          <button
+            className="hud-button"
+            type="button"
+            disabled={!selectedProvider || !bridgeAvailable || Boolean(busyLabel)}
+            onClick={() => void handleDeleteProvider()}
+          >
+            Disable
+          </button>
+          <button
+            className="hud-button"
+            type="button"
+            disabled={!selectedProvider || !bridgeAvailable || Boolean(busyLabel)}
+            onClick={() => void handleTestProvider()}
+          >
+            Test
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderProviderTest(): ReactElement {
+    return (
+      <section className="settings-card">
+        <div className="settings-section-head">
+          <span className="hud-label">Provider Test</span>
+          <StatusDot status={busyLabel ? "running" : testResult?.ok ? "complete" : testResult ? "error" : "pending"} label={busyLabel ?? "idle"} />
+        </div>
+
+        {testResult ? (
+          <div className="settings-test-result">
+            <strong>{testResult.ok ? "PASS" : "FAIL"}</strong>
+            <p>{testResult.message}</p>
+            <NumericText muted>{`${testResult.durationMs}ms`}</NumericText>
+            <ol>
+              {testResult.attempts.map((attempt) => (
+                <li key={attempt.attempt}>
+                  <span>{attempt.status}</span>
+                  <em>{attempt.message}</em>
+                  <NumericText muted>{`${attempt.durationMs}ms`}</NumericText>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : (
+          <div className="settings-test-empty">NO TEST RUN</div>
+        )}
+      </section>
+    );
+  }
+
+  function renderProvidersSection(): ReactElement {
+    return (
+      <div className="settings-provider-catalog-shell">
+        <div className="settings-provider-catalog-toolbar">
+          <div className="settings-provider-search">
+            <label className="hud-field">
+              <span>Search</span>
+              <input
+                value={providerSearch}
+                placeholder="Search providers..."
+                onChange={(event) => setProviderSearch(event.target.value)}
+              />
+            </label>
+          </div>
+          <button
+            className="hud-button"
+            type="button"
+            disabled={!bridgeAvailable || Boolean(busyLabel)}
+            onClick={() => {
+              setSelectedProviderCatalogId(NEW_CUSTOM_PROVIDER_CATALOG_ID);
+              setProviderDraft(newProviderDraft);
+              setModelsText(newProviderDraft.models.join(", "));
+              setProviderSearch("");
+              setTestResult(null);
+              setLocalError(null);
+            }}
+          >
+            Add Custom Provider
+          </button>
+        </div>
+
+        <div className="settings-providers-page">
+          <aside className="settings-provider-browser" aria-label="Providers">
+            <div className="settings-provider-list">
+              {visibleProviders.map((provider) => (
+                <ProviderButton
+                  key={provider.id}
+                  provider={provider}
+                  active={provider.id === selectedProviderCatalogItem?.id}
+                  onSelect={() => setSelectedProviderCatalogId(provider.id)}
+                />
+              ))}
+              {!visibleProviders.length ? <div className="settings-empty-row">NO PROVIDERS</div> : null}
+            </div>
+          </aside>
+
+          <section className="settings-provider-detail">
+            {renderProviderForm()}
+            {renderProviderTest()}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMcpServersSection(): ReactElement {
+    return (
+      <div className="settings-mcp-page">
+        <form className="settings-card" onSubmit={(event) => void handleSaveMcpServer(event)}>
+          <div className="settings-section-head settings-section-head--large">
+            <div>
+              <span className="hud-label">MCP Servers</span>
+              <h3>{mcpDraft.label || "Local MCP"}</h3>
+            </div>
+            <button
+              className="hud-link-button"
+              type="button"
+              onClick={() => {
+                setSelectedMcpId("");
+                setMcpDraft(newMcpDraft);
+                setMcpArgsText("");
+                setMcpEnvText("");
+              }}
+            >
+              New
+            </button>
+          </div>
+
+          <div className="settings-mcp-list">
+            {mcpServers.length ? (
+              mcpServers.map((server) => (
+                <button
+                  className={["settings-mcp-row", server.id === selectedMcpServer?.id ? "settings-mcp-row--active" : ""].filter(Boolean).join(" ")}
+                  key={server.id}
+                  type="button"
+                  onClick={() => setSelectedMcpId(server.id)}
+                >
+                  <span>⬢</span>
+                  <strong>{server.label}</strong>
+                  <em>{server.enabled ? `${server.transport} · ${server.aiWriteLevel}` : "disabled"}</em>
+                </button>
+              ))
+            ) : (
+              <div className="settings-mcp-empty">NO MCP SERVERS</div>
+            )}
+          </div>
+
+          <div className="settings-grid settings-grid--three">
+            <label className="hud-field">
+              <span>Label</span>
+              <input
+                value={mcpDraft.label}
+                onChange={(event) => setMcpDraft((current) => ({ ...current, label: event.target.value }))}
+              />
+            </label>
+            <label className="hud-field">
+              <span>Enabled</span>
+              <select
+                value={mcpDraft.enabled ? "yes" : "no"}
+                onChange={(event) => setMcpDraft((current) => ({ ...current, enabled: event.target.value === "yes" }))}
+              >
+                <option value="yes">Enabled</option>
+                <option value="no">Disabled</option>
+              </select>
+            </label>
+            <label className="hud-field">
+              <span>AI Write</span>
+              <select
+                value={mcpDraft.aiWriteLevel}
+                onChange={(event) =>
+                  setMcpDraft((current) => ({ ...current, aiWriteLevel: event.target.value as McpServerDraft["aiWriteLevel"] }))
+                }
+              >
+                <option value="read">Read</option>
+                <option value="auto">Auto</option>
+                <option value="confirm">Confirm</option>
+              </select>
+            </label>
+            <label className="hud-field hud-field--wide-2">
+              <span>Command</span>
+              <input
+                value={mcpDraft.command}
+                onChange={(event) => setMcpDraft((current) => ({ ...current, command: event.target.value }))}
+              />
+            </label>
+            <NumberField label="Timeout" value={mcpDraft.timeoutMs} onChange={(value) => setMcpDraft((current) => ({ ...current, timeoutMs: value }))} />
+            <label className="hud-field hud-field--wide">
+              <span>Args</span>
+              <textarea
+                value={mcpArgsText}
+                placeholder="/path/to/server.js"
+                onChange={(event) => setMcpArgsText(event.target.value)}
+              />
+            </label>
+            <label className="hud-field hud-field--wide">
+              <span>Env</span>
+              <textarea
+                value={mcpEnvText}
+                placeholder="API_KEY=value"
+                onChange={(event) => setMcpEnvText(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="settings-actions">
+            <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
+              Save MCP
+            </button>
+            <button
+              className="hud-button"
+              type="button"
+              disabled={!selectedMcpServer || !bridgeAvailable || Boolean(busyLabel)}
+              onClick={() => void handleCheckMcpHealth(selectedMcpServer?.id)}
+            >
+              Health
+            </button>
+            <button
+              className="hud-button"
+              type="button"
+              disabled={!selectedMcpServer || !bridgeAvailable || Boolean(busyLabel)}
+              onClick={() => void handleDeleteMcpServer()}
+            >
+              Delete
+            </button>
+          </div>
+        </form>
+
+        <section className="settings-card settings-mcp-health">
+          <div className="settings-section-head">
+            <span className="hud-label">MCP Health</span>
+            <button className="hud-link-button" type="button" disabled={!bridgeAvailable || Boolean(busyLabel)} onClick={() => void handleCheckMcpHealth()}>
+              Check All
+            </button>
+          </div>
+          {mcpHealthChecks.length ? (
+            <ol>
+              {mcpHealthChecks.map((check) => (
+                <li key={check.serverId}>
+                  <StatusDot status={check.ok ? "complete" : check.enabled ? "error" : "waiting"} label={check.ok ? "ok" : "blocked"} />
+                  <strong>{check.label}</strong>
+                  <em>{`${check.toolCount} tools`}</em>
+                  <p>{check.message}</p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="settings-test-empty">NO MCP CHECK</div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  function renderPlaceholderSection(section: SettingsSection): ReactElement {
+    return (
+      <section className="settings-card settings-placeholder-card">
+        <div className="settings-placeholder-mark">{section.icon}</div>
+        <h3>{section.label}</h3>
+        <p>READY</p>
+      </section>
+    );
+  }
+
+  function renderActiveSection(): ReactElement {
+    if (activeSectionId === "general") {
+      return renderGeneralSection();
+    }
+
+    if (activeSectionId === "providers") {
+      return renderProvidersSection();
+    }
+
+    if (activeSectionId === "mcp-servers") {
+      return renderMcpServersSection();
+    }
+
+    return renderPlaceholderSection(activeSection);
+  }
+
+  return (
+    <div className="settings-overlay" role="dialog" aria-modal="true" aria-label="Settings">
+      <HUDPanel className="settings-panel settings-panel--workspace" label="Plug settings" active>
+        <aside className="settings-sidebar" aria-label="Settings sections">
+          <div className="settings-window-controls" aria-hidden="true">
+            <span className="settings-window-dot settings-window-dot--red" />
+            <span className="settings-window-dot settings-window-dot--yellow" />
+            <span className="settings-window-dot settings-window-dot--green" />
+          </div>
+
+          <nav className="settings-nav">
+            {settingsSections.map((section) => (
+              <button
+                key={section.id}
+                className={["settings-nav-item", activeSectionId === section.id ? "settings-nav-item--active" : ""].filter(Boolean).join(" ")}
+                type="button"
+                onClick={() => setActiveSectionId(section.id)}
+              >
+                <span>{section.icon}</span>
+                <strong>{section.label}</strong>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <section className="settings-main" aria-label={`${activeSection.label} settings`}>
+          <header className="settings-main__header">
+            <div className="settings-main__title">
+              <span>{activeSection.icon}</span>
+              <h2>{activeSection.label}</h2>
+            </div>
+          </header>
+
+          <div className="settings-main__content">
+            {renderActiveSection()}
+          </div>
+
+          <footer className="settings-footer">
+            <div>
+              {localError ? <p className="settings-error">{localError}</p> : null}
+              <p className="settings-config-path">{`${config?.configPath ?? "~/.plug/config.json"} · ${mcpConfigPath ?? "~/.plug/mcp.json"}`}</p>
+            </div>
+            <button className="hud-button" type="button" onClick={onClose}>
+              Close
+            </button>
+          </footer>
+        </section>
       </HUDPanel>
     </div>
   );
 }
 
 type ProviderButtonProps = {
-  provider: ProviderSummary;
+  provider: ProviderCatalogItem;
   active: boolean;
   onSelect: () => void;
 };
 
 function ProviderButton({ provider, active, onSelect }: ProviderButtonProps): ReactElement {
+  const status = providerCatalogStatus(provider, false);
+
   return (
     <button
       className={["settings-provider-button", active ? "settings-provider-button--active" : ""].filter(Boolean).join(" ")}
       type="button"
       onClick={onSelect}
     >
-      <span>◆</span>
+      <span className="settings-provider-button__mark">{providerInitials(provider.label)}</span>
       <strong>{provider.label}</strong>
       <em>{provider.defaultModel}</em>
-      <StatusDot status={provider.hasApiKey ? "complete" : "waiting"} label={provider.hasApiKey ? "key" : "no key"} />
+      <StatusDot status={status.dotStatus} label={status.label} />
     </button>
   );
+}
+
+function buildProviderCatalog(providers: ProviderSummary[]): ProviderCatalogItem[] {
+  const matchedProviderIds = new Set<string>();
+
+  const presetItems = providerPresets.map((preset) => {
+    const provider = findConfiguredProviderForPreset(providers, preset, matchedProviderIds);
+
+    if (provider) {
+      matchedProviderIds.add(provider.id);
+    }
+
+    return {
+      id: `preset:${preset.id}`,
+      label: preset.label,
+      summary: preset.summary,
+      baseURL: preset.baseURL,
+      models: preset.models,
+      defaultModel: preset.defaultModel,
+      preset,
+      provider: provider ?? null
+    };
+  });
+
+  const customItems = providers
+    .filter((provider) => !matchedProviderIds.has(provider.id))
+    .map((provider) => ({
+      id: `provider:${provider.id}`,
+      label: provider.label,
+      summary: "Custom OpenAI-compatible endpoint.",
+      baseURL: provider.baseURL,
+      models: provider.models,
+      defaultModel: provider.defaultModel,
+      preset: null,
+      provider
+    }));
+
+  return [...presetItems, ...customItems];
+}
+
+function findConfiguredProviderForPreset(
+  providers: ProviderSummary[],
+  preset: ProviderPreset,
+  matchedProviderIds: Set<string>
+): ProviderSummary | undefined {
+  const presetBaseURL = normalizeProviderBaseURL(preset.baseURL);
+
+  return providers.find((provider) => {
+    if (matchedProviderIds.has(provider.id)) {
+      return false;
+    }
+
+    const sameBaseURL = normalizeProviderBaseURL(provider.baseURL) === presetBaseURL;
+    const sameLabel = provider.label.toLowerCase() === preset.label.toLowerCase();
+    return sameBaseURL || sameLabel;
+  });
+}
+
+function toCatalogDraft(item: ProviderCatalogItem): ProviderDraft {
+  if (item.provider) {
+    return toDraft(item.provider);
+  }
+
+  if (item.preset) {
+    return providerDraftFromPreset(item.preset);
+  }
+
+  return {
+    label: item.label,
+    type: "openai-compatible",
+    baseURL: item.baseURL,
+    models: [...item.models],
+    defaultModel: item.defaultModel,
+    proxyMode: "global",
+    proxyUrl: "",
+    apiKey: ""
+  };
+}
+
+function providerCatalogStatus(
+  item: ProviderCatalogItem | null,
+  isNewCustomProvider: boolean
+): { label: string; tone: "active" | "warning" | "inactive"; dotStatus: "complete" | "waiting" | "pending" } {
+  if (isNewCustomProvider || !item) {
+    return { label: "Draft", tone: "inactive", dotStatus: "pending" };
+  }
+
+  if (!item.provider) {
+    return { label: "Inactive", tone: "inactive", dotStatus: "pending" };
+  }
+
+  if (!item.provider.hasApiKey) {
+    return { label: "Needs API Key", tone: "warning", dotStatus: "waiting" };
+  }
+
+  return { label: "Active", tone: "active", dotStatus: "complete" };
+}
+
+function providerInitials(label: string): string {
+  const words = label
+    .replace(/[^\dA-Za-z\s.]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!words.length) {
+    return "AI";
+  }
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return words
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function modelOptionsFromText(modelsText: string, defaultModel: string): string[] {
+  const models = modelsText
+    .split(/[\n,]+/)
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  if (defaultModel && !models.includes(defaultModel)) {
+    models.unshift(defaultModel);
+  }
+
+  return [...new Set(models)];
 }
 
 type NumberFieldProps = {
@@ -724,6 +1169,51 @@ function NumberField({ label, value, onChange }: NumberFieldProps): ReactElement
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>
+  );
+}
+
+type ModelRouteEditorProps = {
+  label: string;
+  config: AppConfigSnapshot | null;
+  selection: ToolModelSelection | null;
+  onProviderChange: (providerId: string) => void;
+  onModelChange: (modelId: string) => void;
+};
+
+function ModelRouteEditor({
+  label,
+  config,
+  selection,
+  onProviderChange,
+  onModelChange
+}: ModelRouteEditorProps): ReactElement {
+  return (
+    <div className="settings-route-block">
+      <div className="settings-route-block__head">
+        <span className="hud-label">{label}</span>
+        <em>{selectedProviderLabel(config, selection)}</em>
+      </div>
+      <label className="hud-field">
+        <span>Provider</span>
+        <select value={selection?.providerId ?? ""} onChange={(event) => onProviderChange(event.target.value)}>
+          {config?.providers.map((provider) => (
+            <option key={provider.id} value={provider.id}>
+              {provider.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="hud-field">
+        <span>Model</span>
+        <select value={selection?.modelId ?? ""} onChange={(event) => onModelChange(event.target.value)}>
+          {modelsForSelection(config, selection).map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }
 
@@ -797,7 +1287,28 @@ function formatEnv(env: Record<string, string>): string {
     .join("\n");
 }
 
-function modelsForToolModel(config: AppConfigSnapshot | null, selection: ToolModelSelection | null): string[] {
+function modelSelectionForProvider(
+  config: AppConfigSnapshot | null,
+  providerId: string
+): ToolModelSelection {
+  const provider = config?.providers.find((entry) => entry.id === providerId) ?? config?.providers[0];
+
+  return {
+    providerId: provider?.id ?? providerId,
+    modelId: provider?.defaultModel ?? provider?.models[0] ?? ""
+  };
+}
+
+function modelsForSelection(config: AppConfigSnapshot | null, selection: ToolModelSelection | null): string[] {
   const provider = config?.providers.find((entry) => entry.id === selection?.providerId) ?? config?.providers[0];
   return provider?.models ?? [];
+}
+
+function selectedProviderLabel(config: AppConfigSnapshot | null, selection: ToolModelSelection | null): string {
+  const provider = config?.providers.find((entry) => entry.id === selection?.providerId);
+  return provider?.label ?? "No provider";
+}
+
+function normalizeProviderBaseURL(baseURL: string): string {
+  return baseURL.trim().replace(/\/+$/, "").toLowerCase();
 }

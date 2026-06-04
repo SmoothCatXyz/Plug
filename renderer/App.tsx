@@ -573,6 +573,27 @@ export function App(): ReactElement {
     [markBridgeUnavailable]
   );
 
+  const setChatModel = useCallback(
+    async (selection: ToolModelSelection): Promise<void> => {
+      const plug = window.plug;
+
+      if (!plug) {
+        markBridgeUnavailable();
+        return;
+      }
+
+      const config = await plug.invoke("config.setChatModel", selection);
+      setState((current) => ({
+        ...current,
+        config,
+        bridgeAvailable: true,
+        statusMessage: `Chat model set to ${selection.modelId}.`,
+        error: null
+      }));
+    },
+    [markBridgeUnavailable]
+  );
+
   const setNetwork = useCallback(
     async (network: NetworkConfig): Promise<void> => {
       const plug = window.plug;
@@ -1180,6 +1201,7 @@ export function App(): ReactElement {
       onReloadMcpServers={reloadMcpServers}
       onUpsertProvider={upsertProvider}
       onDeleteProvider={deleteProvider}
+      onSetChatModel={setChatModel}
       onSetToolModel={setToolModel}
       onSetNetwork={setNetwork}
       onTestProvider={testProvider}

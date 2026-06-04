@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { getProjectById } from "./project-service";
 import { loadWorkspace } from "./workspace-service";
 import { resolveChatProviderSecret } from "./config-service";
-import { toLanguageModel, MINIMAL_REASONING } from "./provider-utils";
+import { minimalReasoningOptions, toLanguageModel } from "./provider-utils";
 import { withPersona } from "./persona";
 import type { ChatStreamEvent } from "../../shared/types";
 
@@ -76,10 +76,11 @@ export async function streamConversationalReply(input: {
     content: turn.content
   }));
 
+  const providerOptions = minimalReasoningOptions(providerSecret);
   const result = streamText({
     model: toLanguageModel(providerSecret),
     // Chat doesn't need a reasoning chain — minimal effort keeps replies snappy.
-    providerOptions: MINIMAL_REASONING,
+    ...(providerOptions ? { providerOptions } : {}),
     // No temperature: reasoning models (gpt-5) may reject a non-default value.
     // Generous token budget: even at minimal effort, leave room for the reply.
     maxOutputTokens: 1024,

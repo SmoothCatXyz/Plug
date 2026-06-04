@@ -1,6 +1,7 @@
 import {
   deleteProvider,
   getConfigSnapshot,
+  setChatModel,
   setNetworkConfig,
   setToolModel,
   upsertProvider
@@ -23,6 +24,10 @@ export function registerConfigIpc(): void {
 
   registerIpcHandler("config.setToolModel", async (payload) => {
     return setToolModel(payload);
+  });
+
+  registerIpcHandler("config.setChatModel", async (payload) => {
+    return setChatModel(payload);
   });
 
   registerIpcHandler("config.setNetwork", async (payload) => {

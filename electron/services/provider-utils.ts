@@ -16,6 +16,20 @@ export const MINIMAL_REASONING = {
   openaiCompatible: { reasoningEffort: "minimal" }
 } as const;
 
+export const LOW_REASONING = {
+  openaiCompatible: { reasoningEffort: "low" }
+} as const;
+
+type OpenAIReasoningOptions = typeof MINIMAL_REASONING | typeof LOW_REASONING;
+
+export function minimalReasoningOptions(providerSecret: ProviderSecret): OpenAIReasoningOptions | undefined {
+  return supportsOpenAIReasoningEffort(providerSecret.provider.baseURL) ? MINIMAL_REASONING : undefined;
+}
+
+export function lowReasoningOptions(providerSecret: ProviderSecret): OpenAIReasoningOptions | undefined {
+  return supportsOpenAIReasoningEffort(providerSecret.provider.baseURL) ? LOW_REASONING : undefined;
+}
+
 export function toLanguageModel(providerSecret: ProviderSecret): LanguageModel {
   const provider = createOpenAICompatible({
     name: providerSecret.provider.id,
@@ -28,4 +42,13 @@ export function toLanguageModel(providerSecret: ProviderSecret): LanguageModel {
   });
 
   return provider(providerSecret.modelId);
+}
+
+function supportsOpenAIReasoningEffort(baseURL: string): boolean {
+  try {
+    const host = new URL(baseURL).hostname.toLowerCase();
+    return host === "api.openai.com" || host.endsWith(".openai.com");
+  } catch {
+    return false;
+  }
 }

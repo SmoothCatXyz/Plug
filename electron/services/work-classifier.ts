@@ -1,6 +1,6 @@
 import { streamText } from "ai";
 import { resolveToolProviderSecret } from "./config-service";
-import { toLanguageModel, MINIMAL_REASONING } from "./provider-utils";
+import { minimalReasoningOptions, toLanguageModel } from "./provider-utils";
 import { classifyIntent } from "./intent-classifier";
 
 export type MessageKind = "chat" | "work";
@@ -52,10 +52,11 @@ export async function classifyWorkOrChat(input: {
     // token 'd'") — that threw on every call and silently defaulted to "work".
     // Reasoning models (gpt-5) also spend output tokens on hidden reasoning, so
     // keep a generous cap; no temperature (some reasoning models reject it).
+    const providerOptions = minimalReasoningOptions(secret);
     const result = streamText({
       model: toLanguageModel(secret),
       maxOutputTokens: 512,
-      providerOptions: MINIMAL_REASONING,
+      ...(providerOptions ? { providerOptions } : {}),
       system: [
         "你是一个意图分类器。判断用户最新一句话属于哪一类,只回一个词:work 或 chat。",
         "",

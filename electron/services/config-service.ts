@@ -7,6 +7,7 @@ import {
   providerDraftSchema,
   toolModelSelectionSchema
 } from "../../shared/ipc-schema";
+import { defaultProviderPreset } from "../../shared/provider-presets";
 import type {
   AppConfigSnapshot,
   NetworkConfig,
@@ -35,6 +36,7 @@ const storedProviderSchema = z.object({
 const storedConfigSchema = z.object({
   version: z.literal(1),
   modelConnectors: z.array(storedProviderSchema),
+  chatModel: toolModelSelectionSchema.optional(),
   toolModel: toolModelSelectionSchema,
   network: networkConfigSchema
 });
@@ -72,7 +74,7 @@ export async function upsertProvider(draft: ProviderDraft): Promise<AppConfigSna
     updatedAt: now
   };
 
-  const nextConfig = ensureToolModelValid({
+  const nextConfig = ensureModelSelectionsValid({
     ...config,
     modelConnectors: [provider, ...config.modelConnectors.filter((entry) => entry.id !== id)]
   });
@@ -84,7 +86,7 @@ export async function upsertProvider(draft: ProviderDraft): Promise<AppConfigSna
 export async function deleteProvider(id: string): Promise<AppConfigSnapshot> {
   const config = await readConfig();
   const nextProviders = config.modelConnectors.filter((provider) => provider.id !== id);
-  const nextConfig = ensureToolModelValid({
+  const nextConfig = ensureModelSelectionsValid({
     ...config,
     modelConnectors: nextProviders.length ? nextProviders : [defaultProvider()]
   });
@@ -94,21 +96,25 @@ export async function deleteProvider(id: string): Promise<AppConfigSnapshot> {
 }
 
 export async function setToolModel(selection: ToolModelSelection): Promise<AppConfigSnapshot> {
-  const parsedSelection = toolModelSelectionSchema.parse(selection);
   const config = await readConfig();
-  const provider = config.modelConnectors.find((entry) => entry.id === parsedSelection.providerId);
-
-  if (!provider) {
-    throw new Error(`Provider was not found: ${parsedSelection.providerId}`);
-  }
-
-  if (!provider.models.includes(parsedSelection.modelId)) {
-    throw new Error(`Model is not defined on provider ${provider.id}: ${parsedSelection.modelId}`);
-  }
+  const parsedSelection = validateModelSelection(config, selection);
 
   const nextConfig = {
     ...config,
     toolModel: parsedSelection
+  };
+
+  await writeConfig(nextConfig);
+  return toSnapshot(nextConfig);
+}
+
+export async function setChatModel(selection: ToolModelSelection): Promise<AppConfigSnapshot> {
+  const config = await readConfig();
+  const parsedSelection = validateModelSelection(config, selection);
+
+  const nextConfig = {
+    ...config,
+    chatModel: parsedSelection
   };
 
   await writeConfig(nextConfig);
@@ -153,10 +159,10 @@ export async function resolveChatProviderSecret(modelId: string): Promise<{
   network: NetworkConfig;
 }> {
   const config = await readConfig();
-  const provider =
-    config.modelConnectors.find((entry) => entry.models.includes(modelId)) ??
-    config.modelConnectors.find((entry) => entry.id === config.toolModel.providerId) ??
-    config.modelConnectors[0];
+  const chatModel = config.chatModel;
+  const provider = chatModel
+    ? config.modelConnectors.find((entry) => entry.id === chatModel.providerId) ?? config.modelConnectors[0]
+    : config.modelConnectors.find((entry) => entry.models.includes(modelId)) ?? config.modelConnectors[0];
 
   if (!provider) {
     throw new Error("No provider is configured.");
@@ -165,7 +171,11 @@ export async function resolveChatProviderSecret(modelId: string): Promise<{
   return {
     provider: toProviderSummary(provider),
     apiKey: provider.encryptedApiKey ? decryptSecret(provider.encryptedApiKey) : "",
-    modelId: provider.models.includes(modelId) ? modelId : provider.defaultModel,
+    modelId: chatModel && provider.models.includes(chatModel.modelId)
+      ? chatModel.modelId
+      : provider.models.includes(modelId)
+        ? modelId
+        : provider.defaultModel,
     network: config.network
   };
 }
@@ -204,7 +214,7 @@ async function readConfig(): Promise<StoredConfig> {
     const parsed = storedConfigSchema.safeParse(JSON.parse(raw));
 
     if (parsed.success) {
-      return ensureToolModelValid(normalizeStoredConfig(parsed.data));
+      return ensureModelSelectionsValid(normalizeStoredConfig(parsed.data));
     }
   } catch (error) {
     if (!isMissingFileError(error)) {
@@ -230,6 +240,7 @@ function toSnapshot(config: StoredConfig): AppConfigSnapshot {
   return appConfigSnapshotSchema.parse({
     configPath: getConfigPath(),
     providers: config.modelConnectors.map(toProviderSummary),
+    chatModel: config.chatModel,
     toolModel: config.toolModel,
     network: config.network
   });
@@ -257,9 +268,13 @@ function defaultConfig(): StoredConfig {
   return {
     version: 1,
     modelConnectors: [provider],
+    chatModel: {
+      providerId: provider.id,
+      modelId: provider.defaultModel
+    },
     toolModel: {
       providerId: provider.id,
-      modelId: "deepseek-chat"
+      modelId: provider.defaultModel
     },
     network: {
       proxyMode: "off",
@@ -277,38 +292,64 @@ function defaultProvider(): StoredProvider {
 
   return {
     id: "deepseek-default",
-    label: "DeepSeek",
-    type: "openai-compatible",
-    baseURL: "https://api.deepseek.com/v1",
+    label: defaultProviderPreset.label,
+    type: defaultProviderPreset.type,
+    baseURL: defaultProviderPreset.baseURL,
     encryptedApiKey: "",
-    models: ["deepseek-chat", "deepseek-reasoner"],
-    defaultModel: "deepseek-chat",
-    proxyMode: "global",
-    proxyUrl: "",
+    models: [...defaultProviderPreset.models],
+    defaultModel: defaultProviderPreset.defaultModel,
+    proxyMode: defaultProviderPreset.proxyMode,
+    proxyUrl: defaultProviderPreset.proxyUrl,
     createdAt: now,
     updatedAt: now
   };
 }
 
-function ensureToolModelValid(config: StoredConfig): StoredConfig {
-  const provider =
-    config.modelConnectors.find((entry) => entry.id === config.toolModel.providerId) ?? config.modelConnectors[0];
+function ensureModelSelectionsValid(config: StoredConfig): StoredConfig {
+  const chatModel = ensureModelSelectionValid(config, config.chatModel);
+  const toolModel = ensureModelSelectionValid(config, config.toolModel);
 
-  if (!provider) {
+  if (!chatModel || !toolModel) {
     return defaultConfig();
   }
 
-  const modelId = provider.models.includes(config.toolModel.modelId)
-    ? config.toolModel.modelId
-    : provider.defaultModel;
-
   return {
     ...config,
-    toolModel: {
-      providerId: provider.id,
-      modelId
-    }
+    chatModel,
+    toolModel
   };
+}
+
+function ensureModelSelectionValid(
+  config: StoredConfig,
+  selection: ToolModelSelection | undefined
+): ToolModelSelection | null {
+  const provider =
+    config.modelConnectors.find((entry) => entry.id === selection?.providerId) ?? config.modelConnectors[0];
+
+  if (!provider) {
+    return null;
+  }
+
+  return {
+    providerId: provider.id,
+    modelId: selection && provider.models.includes(selection.modelId) ? selection.modelId : provider.defaultModel
+  };
+}
+
+function validateModelSelection(config: StoredConfig, selection: ToolModelSelection): ToolModelSelection {
+  const parsedSelection = toolModelSelectionSchema.parse(selection);
+  const provider = config.modelConnectors.find((entry) => entry.id === parsedSelection.providerId);
+
+  if (!provider) {
+    throw new Error(`Provider was not found: ${parsedSelection.providerId}`);
+  }
+
+  if (!provider.models.includes(parsedSelection.modelId)) {
+    throw new Error(`Model is not defined on provider ${provider.id}: ${parsedSelection.modelId}`);
+  }
+
+  return parsedSelection;
 }
 
 function normalizeStoredConfig(config: StoredConfig): StoredConfig {

@@ -113,6 +113,7 @@ export const networkConfigSchema = z.object({
 export const appConfigSnapshotSchema = z.object({
   configPath: z.string(),
   providers: z.array(providerSummarySchema),
+  chatModel: toolModelSelectionSchema,
   toolModel: toolModelSelectionSchema,
   network: networkConfigSchema
 });
@@ -369,6 +370,10 @@ export const ipcSchemas = {
     response: appConfigSnapshotSchema
   },
   "config.setToolModel": {
+    request: toolModelSelectionSchema,
+    response: appConfigSnapshotSchema
+  },
+  "config.setChatModel": {
     request: toolModelSelectionSchema,
     response: appConfigSnapshotSchema
   },
