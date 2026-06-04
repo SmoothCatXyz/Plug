@@ -25,6 +25,7 @@ import {
   writeProjectTextFile
 } from "../tools/project-files";
 import { getProjectById } from "./project-service";
+import { rewriteCommandWithRtk } from "./rtk-service";
 
 const toolRegistry = createCoreToolRegistry();
 const pendingApprovals = new Map<string, PendingToolApproval>();
@@ -325,22 +326,25 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
 }
 
 async function applyCommandApproval(projectRoot: string, cmd: string, cwd: string): Promise<string> {
-  if (process.env.PLUG_ENABLE_RUN_COMMAND !== "1") {
-    throw new Error("run_command is disabled. Set PLUG_ENABLE_RUN_COMMAND=1 to allow approved commands.");
-  }
-
-  const commandParts = parseCommand(cmd);
+  const workingDirectory = safeProjectPath(projectRoot, cwd || ".");
+  const rewrite = await rewriteCommandWithRtk(cmd, workingDirectory);
+  const commandParts = parseCommand(rewrite.rewrittenCommand);
   const command = commandParts[0];
 
   if (!command) {
     throw new Error("Command cannot be empty.");
   }
 
-  const workingDirectory = safeProjectPath(projectRoot, cwd || ".");
   const output = await runApprovedCommand(command, commandParts.slice(1), workingDirectory);
   const outputPath = ".plug/last-command-output.txt";
+  const commandHeader = [
+    `rawCommand=${cmd}`,
+    rewrite.rewrittenCommand !== cmd ? `rtkCommand=${rewrite.rewrittenCommand}` : "",
+    rewrite.available ? "" : `rtk=${rewrite.reason ?? "unavailable"}`,
+    ""
+  ].filter((line) => line !== "").join("\n");
 
-  await writeProjectTextFile(projectRoot, outputPath, output);
+  await writeProjectTextFile(projectRoot, outputPath, `${commandHeader}${output}`);
   return outputPath;
 }
 

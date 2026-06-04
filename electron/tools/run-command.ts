@@ -12,7 +12,7 @@ type RunCommandInput = z.infer<typeof runCommandInputSchema>;
 export const runCommandTool: AgentTool<RunCommandInput> = {
   name: "run_command",
   label: "Run Command",
-  description: "Request an approved project-local command execution. Disabled by default.",
+  description: "Request an approved project-local command execution. Supported commands are rewritten through RTK before execution when available.",
   category: "shell",
   aiWriteLevel: "confirm",
   parameters: runCommandInputSchema,
@@ -29,10 +29,6 @@ export const runCommandTool: AgentTool<RunCommandInput> = {
     }
   ],
   async execute(input, context) {
-    if (process.env.PLUG_ENABLE_RUN_COMMAND !== "1") {
-      throw new Error("run_command is disabled by default. Enable PLUG_ENABLE_RUN_COMMAND=1 before requesting shell execution.");
-    }
-
     return {
       summary: `Command "${input.cmd}" is pending approval.`,
       pendingApproval: createPendingApproval({

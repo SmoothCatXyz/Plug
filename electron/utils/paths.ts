@@ -25,6 +25,10 @@ export function getMcpConfigPath(): string {
   return join(getPlugHomeDir(), "mcp.json");
 }
 
+export function getTokenSavingsPath(): string {
+  return join(getPlugHomeDir(), "token-savings.json");
+}
+
 export function getLogsDir(): string {
   return join(getPlugHomeDir(), "logs");
 }

@@ -218,6 +218,74 @@ export type McpConfigSnapshot = {
   servers: McpServerConfig[];
 };
 
+export type TokenSavingsPtcDaily = {
+  date: string;
+  runs: number;
+  toolCalls: number;
+  savedTokens: number;
+};
+
+export type TokenSavingsPtcStats = {
+  available: boolean;
+  totalRuns: number;
+  totalToolCalls: number;
+  totalResultTokens: number;
+  totalStdoutTokens: number;
+  totalSavedTokens: number;
+  daily: TokenSavingsPtcDaily[];
+  updatedAt: string;
+};
+
+export type TokenSavingsRtkSummary = {
+  totalCommands: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalSavedTokens: number;
+  avgSavingsPct: number;
+  totalTimeMs: number;
+  avgTimeMs: number;
+};
+
+export type TokenSavingsRtkDaily = {
+  date: string;
+  commands: number;
+  inputTokens: number;
+  outputTokens: number;
+  savedTokens: number;
+};
+
+export type TokenSavingsRtkCommand = {
+  command: string;
+  count: number;
+  savedTokens: number;
+  avgSavingsPct: number;
+};
+
+export type TokenSavingsRtkRecent = {
+  id: string;
+  command: string;
+  inputTokens: number;
+  outputTokens: number;
+  savedTokens: number;
+  savingsPct: number;
+  timeMs: number;
+  createdAt: string;
+};
+
+export type TokenSavingsRtkStats = {
+  available: boolean;
+  summary: TokenSavingsRtkSummary;
+  daily: TokenSavingsRtkDaily[];
+  byCommand: TokenSavingsRtkCommand[];
+  recent: TokenSavingsRtkRecent[];
+};
+
+export type TokenSavingsSnapshot = {
+  path: string;
+  ptc: TokenSavingsPtcStats;
+  rtk: TokenSavingsRtkStats;
+};
+
 export type ChatRole = "user" | "assistant";
 
 export type ChatMessage = {

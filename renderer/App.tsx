@@ -17,6 +17,7 @@ import type {
   ProjectSummary,
   SessionSnapshot,
   TemplateSummary,
+  TokenSavingsSnapshot,
   ToolDescriptor,
   ToolModelSelection,
   ToolStreamEvent,
@@ -39,6 +40,7 @@ type BootstrapState = {
   mcpServers: McpServerConfig[];
   mcpConfigPath: string | null;
   mcpHealthChecks: McpServerHealth[];
+  tokenSavings: TokenSavingsSnapshot | null;
   promptApps: CustomPromptApp[];
   promptAppsPath: string | null;
   sessionSnapshot: SessionSnapshot | null;
@@ -86,6 +88,7 @@ export function App(): ReactElement {
     mcpServers: [],
     mcpConfigPath: null,
     mcpHealthChecks: [],
+    tokenSavings: null,
     promptApps: [],
     promptAppsPath: null,
     sessionSnapshot: null,
@@ -116,6 +119,7 @@ export function App(): ReactElement {
       mcpServers: [],
       mcpConfigPath: null,
       mcpHealthChecks: [],
+      tokenSavings: null,
       promptApps: [],
       promptAppsPath: null,
       pendingApprovals: [],
@@ -333,6 +337,25 @@ export function App(): ReactElement {
     }));
 
     return snapshot.servers;
+  }, [markBridgeUnavailable]);
+
+  const reloadTokenSavings = useCallback(async (): Promise<TokenSavingsSnapshot | null> => {
+    const plug = window.plug;
+
+    if (!plug) {
+      markBridgeUnavailable();
+      return null;
+    }
+
+    const snapshot = await plug.invoke("tokenSavings.get", {});
+    setState((current) => ({
+      ...current,
+      tokenSavings: snapshot,
+      bridgeAvailable: true,
+      error: null
+    }));
+
+    return snapshot;
   }, [markBridgeUnavailable]);
 
   const refreshWorkspaceTools = useCallback(async (): Promise<void> => {
@@ -1000,7 +1023,17 @@ export function App(): ReactElement {
       }
 
       try {
-        const [appInfo, projectList, registryPath, templateList, defaultParentDir, config, promptAppSnapshot, mcpSnapshot] = await Promise.all([
+        const [
+          appInfo,
+          projectList,
+          registryPath,
+          templateList,
+          defaultParentDir,
+          config,
+          promptAppSnapshot,
+          mcpSnapshot,
+          tokenSavings
+        ] = await Promise.all([
           plug.invoke("app.info", {}),
           plug.invoke("project.list", {}),
           plug.invoke("project.registryPath", {}),
@@ -1008,7 +1041,8 @@ export function App(): ReactElement {
           plug.invoke("template.defaultParentDir", {}),
           plug.invoke("config.get", {}),
           plug.invoke("promptApp.list", {}),
-          plug.invoke("mcp.list", {})
+          plug.invoke("mcp.list", {}),
+          plug.invoke("tokenSavings.get", {})
         ]);
 
         if (!cancelled) {
@@ -1022,6 +1056,7 @@ export function App(): ReactElement {
             mcpServers: mcpSnapshot.servers,
             mcpConfigPath: mcpSnapshot.path,
             mcpHealthChecks: [],
+            tokenSavings,
             promptApps: promptAppSnapshot.apps,
             promptAppsPath: promptAppSnapshot.path,
             bridgeAvailable: true,
@@ -1195,10 +1230,12 @@ export function App(): ReactElement {
       mcpServers={state.mcpServers}
       mcpConfigPath={state.mcpConfigPath}
       mcpHealthChecks={state.mcpHealthChecks}
+      tokenSavings={state.tokenSavings}
       bridgeAvailable={state.bridgeAvailable}
       onClose={() => setState((current) => ({ ...current, settingsOpen: false }))}
       onReloadConfig={reloadConfig}
       onReloadMcpServers={reloadMcpServers}
+      onReloadTokenSavings={reloadTokenSavings}
       onUpsertProvider={upsertProvider}
       onDeleteProvider={deleteProvider}
       onSetChatModel={setChatModel}

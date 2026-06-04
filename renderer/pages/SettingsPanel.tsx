@@ -9,6 +9,7 @@ import type {
   ProviderDraft,
   ProviderSummary,
   ProviderTestResult,
+  TokenSavingsSnapshot,
   ToolModelSelection
 } from "../../shared/types";
 import type { ProviderPreset } from "../../shared/provider-presets";
@@ -25,10 +26,12 @@ type SettingsPanelProps = {
   mcpServers: McpServerConfig[];
   mcpConfigPath: string | null;
   mcpHealthChecks: McpServerHealth[];
+  tokenSavings: TokenSavingsSnapshot | null;
   bridgeAvailable: boolean;
   onClose: () => void;
   onReloadConfig: () => Promise<AppConfigSnapshot | null>;
   onReloadMcpServers: () => Promise<McpServerConfig[]>;
+  onReloadTokenSavings: () => Promise<TokenSavingsSnapshot | null>;
   onUpsertProvider: (draft: ProviderDraft) => Promise<void>;
   onDeleteProvider: (id: string) => Promise<void>;
   onSetChatModel: (selection: ToolModelSelection) => Promise<void>;
@@ -124,10 +127,12 @@ export function SettingsPanel({
   mcpServers,
   mcpConfigPath,
   mcpHealthChecks,
+  tokenSavings,
   bridgeAvailable,
   onClose,
   onReloadConfig,
   onReloadMcpServers,
+  onReloadTokenSavings,
   onUpsertProvider,
   onDeleteProvider,
   onSetChatModel,
@@ -197,7 +202,8 @@ export function SettingsPanel({
 
     void onReloadConfig();
     void onReloadMcpServers();
-  }, [bridgeAvailable, onReloadConfig, onReloadMcpServers]);
+    void onReloadTokenSavings();
+  }, [bridgeAvailable, onReloadConfig, onReloadMcpServers, onReloadTokenSavings]);
 
   useEffect(() => {
     if (!config) {
@@ -923,6 +929,74 @@ export function SettingsPanel({
     );
   }
 
+  function renderTokenSavingsSection(): ReactElement {
+    const ptc = tokenSavings?.ptc;
+    const rtk = tokenSavings?.rtk;
+    const hasRtkData = Boolean(rtk?.available && rtk.summary.totalCommands > 0);
+    const rtkAvailable = Boolean(rtk?.available);
+
+    return (
+      <div className="settings-token-savings-page">
+        <section className="settings-card settings-token-card settings-token-card--ptc">
+          <div className="settings-token-card__head">
+            <div>
+              <span className="settings-token-kicker">&lt;/&gt;</span>
+              <h3>Programmatic Tool Calling</h3>
+              <p>Tokens kept out of the model's context by run_script (tool results processed in the sandbox)</p>
+            </div>
+            <button
+              className="hud-link-button"
+              type="button"
+              disabled={!bridgeAvailable || Boolean(busyLabel)}
+              onClick={() => void onReloadTokenSavings()}
+            >
+              Refresh
+            </button>
+          </div>
+
+          <div className="settings-token-metrics">
+            <TokenSavingsMetric label="Tokens Saved" value={ptc?.totalSavedTokens ?? 0} accent="green" />
+            <TokenSavingsMetric label="Scripts Run" value={ptc?.totalRuns ?? 0} accent="cyan" />
+            <TokenSavingsMetric label="Tool Calls" value={ptc?.totalToolCalls ?? 0} accent="blue" />
+            <TokenSavingsMetric label="Results Processed" value={ptc?.totalResultTokens ?? 0} accent="purple" />
+          </div>
+        </section>
+
+        {hasRtkData && rtk ? (
+          <section className="settings-card settings-token-card">
+            <div className="settings-token-card__head">
+              <div>
+                <span className="settings-token-kicker">RTK</span>
+                <h3>RTK Command Compression</h3>
+                <p>Tokens saved by the RTK binary proxying supported shell commands before output reaches model context.</p>
+              </div>
+              <StatusDot status="complete" label={`${Math.round(rtk.summary.avgSavingsPct)}% avg`} />
+            </div>
+
+            <div className="settings-token-metrics settings-token-metrics--six">
+              <TokenSavingsMetric label="Tokens Saved" value={rtk.summary.totalSavedTokens} accent="green" />
+              <TokenSavingsMetric label="Commands" value={rtk.summary.totalCommands} accent="cyan" />
+              <TokenSavingsMetric label="Avg Savings" value={`${Math.round(rtk.summary.avgSavingsPct)}%`} accent="blue" />
+              <TokenSavingsMetric label="Input Tokens" value={rtk.summary.totalInputTokens} accent="purple" />
+              <TokenSavingsMetric label="Output Tokens" value={rtk.summary.totalOutputTokens} accent="cyan" />
+              <TokenSavingsMetric label="Avg Time" value={`${Math.round(rtk.summary.avgTimeMs)}ms`} accent="blue" />
+            </div>
+          </section>
+        ) : (
+          <section className="settings-card settings-token-empty">
+            <div className="settings-token-empty__mark">TS</div>
+            <h3>{rtkAvailable ? "No RTK savings yet" : "RTK binary not found"}</h3>
+            <p>
+              {rtkAvailable
+                ? "RTK is active and will record savings when Plug rewrites supported shell commands through the RTK proxy. run_script savings are shown above."
+                : "Install the rtk binary or set PLUG_RTK_PATH so Plug can use the same command rewrite path as Hermes and Alma."}
+            </p>
+          </section>
+        )}
+      </div>
+    );
+  }
+
   function renderPlaceholderSection(section: SettingsSection): ReactElement {
     return (
       <section className="settings-card settings-placeholder-card">
@@ -944,6 +1018,10 @@ export function SettingsPanel({
 
     if (activeSectionId === "mcp-servers") {
       return renderMcpServersSection();
+    }
+
+    if (activeSectionId === "token-savings") {
+      return renderTokenSavingsSection();
     }
 
     return renderPlaceholderSection(activeSection);
@@ -1172,6 +1250,21 @@ function NumberField({ label, value, onChange }: NumberFieldProps): ReactElement
   );
 }
 
+type TokenSavingsMetricProps = {
+  label: string;
+  value: number | string;
+  accent: "green" | "cyan" | "blue" | "purple";
+};
+
+function TokenSavingsMetric({ label, value, accent }: TokenSavingsMetricProps): ReactElement {
+  return (
+    <div className={`settings-token-metric settings-token-metric--${accent}`}>
+      <span>{label}</span>
+      <strong>{typeof value === "number" ? formatCompactNumber(value) : value}</strong>
+    </div>
+  );
+}
+
 type ModelRouteEditorProps = {
   label: string;
   config: AppConfigSnapshot | null;
@@ -1307,6 +1400,10 @@ function modelsForSelection(config: AppConfigSnapshot | null, selection: ToolMod
 function selectedProviderLabel(config: AppConfigSnapshot | null, selection: ToolModelSelection | null): string {
   const provider = config?.providers.find((entry) => entry.id === selection?.providerId);
   return provider?.label ?? "No provider";
+}
+
+function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
 function normalizeProviderBaseURL(baseURL: string): string {

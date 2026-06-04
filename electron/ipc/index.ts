@@ -9,6 +9,7 @@ import { registerPromptAppIpc } from "./prompt-app";
 import { registerProjectIpc } from "./project";
 import { registerRelayIpc } from "./relay";
 import { registerSessionIpc } from "./session";
+import { registerTokenSavingsIpc } from "./token-savings";
 import { registerWhisperIpc } from "./whisper";
 import { registerIpcHandler } from "./register";
 
@@ -28,5 +29,6 @@ export function registerIpcHandlers(): void {
   registerConfigIpc();
   registerPromptAppIpc();
   registerRelayIpc();
+  registerTokenSavingsIpc();
   registerWhisperIpc();
 }

@@ -1,6 +1,16 @@
 import { tool as aiTool, type ToolSet } from "ai";
+import { z } from "zod";
 import type { AgentMode, ToolInvocationResult, ToolStreamEvent } from "../../shared/types";
 import { invokeAgentTool, listAgentToolDefinitions } from "./agent-service";
+import {
+  buildProgrammaticToolDescription,
+  runProgrammaticScript,
+  shouldInjectProgrammaticTool
+} from "./programmatic-tool-service";
+
+const runScriptInputSchema = z.object({
+  code: z.string().min(1)
+});
 
 type CreateAgentToolSetInput = {
   streamId: string;
@@ -11,7 +21,7 @@ type CreateAgentToolSetInput = {
 
 export async function createAgentToolSet(input: CreateAgentToolSetInput): Promise<ToolSet> {
   const definitions = await listAgentToolDefinitions(input.projectId, input.mode);
-  const entries = definitions.map((definition) => [
+  const entries: Array<[string, unknown]> = definitions.map((definition) => [
     definition.name,
     aiTool({
       title: definition.label,
@@ -31,6 +41,37 @@ export async function createAgentToolSet(input: CreateAgentToolSetInput): Promis
       }
     })
   ]);
+
+  if (shouldInjectProgrammaticTool(input.mode, definitions)) {
+    entries.push([
+      "run_script",
+      aiTool({
+        title: "Run Script",
+        description: buildProgrammaticToolDescription(definitions),
+        inputSchema: runScriptInputSchema,
+        execute: async (toolInput, executionOptions) => {
+          const result = await runProgrammaticScript(runScriptInputSchema.parse(toolInput), {
+            invocationId: `${input.streamId}:${executionOptions.toolCallId}`,
+            projectId: input.projectId,
+            mode: input.mode,
+            definitions,
+            emit: input.emitTool,
+            invokeTool: ({ invocationId, name, input: nestedInput }) =>
+              invokeAgentTool({
+                invocationId,
+                projectId: input.projectId,
+                mode: input.mode,
+                name,
+                input: nestedInput,
+                emit: input.emitTool
+              })
+          });
+
+          return summarizeProgrammaticResultForModel(result);
+        }
+      })
+    ]);
+  }
 
   return Object.fromEntries(entries) as ToolSet;
 }
@@ -69,6 +110,29 @@ function summarizeToolResultForModel(result: ToolInvocationResult): Record<strin
         }
       : undefined,
     output: clipForModel(result.output)
+  };
+}
+
+function summarizeProgrammaticResultForModel(result: Awaited<ReturnType<typeof runProgrammaticScript>>): Record<string, unknown> {
+  return {
+    status: result.success ? "success" : "error",
+    toolName: "run_script",
+    summary: result.success
+      ? `run_script completed with ${result.toolCalls.length} internal tool calls and saved about ${result.savedTokens} tokens.`
+      : result.error ?? "run_script failed.",
+    output: {
+      stdout: clipForModel(result.stdout),
+      stderr: clipForModel(result.stderr),
+      exitCode: result.exitCode,
+      toolCalls: result.toolCalls.map((call) => ({
+        name: call.name,
+        ok: call.ok,
+        durationMs: call.durationMs,
+        error: call.error
+      })),
+      savedTokens: result.savedTokens,
+      note: result.note
+    }
   };
 }
 

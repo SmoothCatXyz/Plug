@@ -210,6 +210,74 @@ export const mcpConfigSnapshotSchema = z.object({
   servers: z.array(mcpServerConfigSchema)
 });
 
+export const tokenSavingsPtcDailySchema = z.object({
+  date: z.string(),
+  runs: z.number().int().min(0),
+  toolCalls: z.number().int().min(0),
+  savedTokens: z.number().int().min(0)
+});
+
+export const tokenSavingsPtcStatsSchema = z.object({
+  available: z.boolean(),
+  totalRuns: z.number().int().min(0),
+  totalToolCalls: z.number().int().min(0),
+  totalResultTokens: z.number().int().min(0),
+  totalStdoutTokens: z.number().int().min(0),
+  totalSavedTokens: z.number().int().min(0),
+  daily: z.array(tokenSavingsPtcDailySchema),
+  updatedAt: z.string()
+});
+
+export const tokenSavingsRtkSummarySchema = z.object({
+  totalCommands: z.number().int().min(0),
+  totalInputTokens: z.number().int().min(0),
+  totalOutputTokens: z.number().int().min(0),
+  totalSavedTokens: z.number().int().min(0),
+  avgSavingsPct: z.number().min(0),
+  totalTimeMs: z.number().int().min(0),
+  avgTimeMs: z.number().min(0)
+});
+
+export const tokenSavingsRtkDailySchema = z.object({
+  date: z.string(),
+  commands: z.number().int().min(0),
+  inputTokens: z.number().int().min(0),
+  outputTokens: z.number().int().min(0),
+  savedTokens: z.number().int().min(0)
+});
+
+export const tokenSavingsRtkCommandSchema = z.object({
+  command: z.string(),
+  count: z.number().int().min(0),
+  savedTokens: z.number().int().min(0),
+  avgSavingsPct: z.number().min(0)
+});
+
+export const tokenSavingsRtkRecentSchema = z.object({
+  id: z.string(),
+  command: z.string(),
+  inputTokens: z.number().int().min(0),
+  outputTokens: z.number().int().min(0),
+  savedTokens: z.number().int().min(0),
+  savingsPct: z.number().min(0),
+  timeMs: z.number().int().min(0),
+  createdAt: z.string()
+});
+
+export const tokenSavingsRtkStatsSchema = z.object({
+  available: z.boolean(),
+  summary: tokenSavingsRtkSummarySchema,
+  daily: z.array(tokenSavingsRtkDailySchema),
+  byCommand: z.array(tokenSavingsRtkCommandSchema),
+  recent: z.array(tokenSavingsRtkRecentSchema)
+});
+
+export const tokenSavingsSnapshotSchema = z.object({
+  path: z.string(),
+  ptc: tokenSavingsPtcStatsSchema,
+  rtk: tokenSavingsRtkStatsSchema
+});
+
 export const chatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant"]),
@@ -424,6 +492,10 @@ export const ipcSchemas = {
     response: z.object({
       checks: z.array(mcpServerHealthSchema)
     })
+  },
+  "tokenSavings.get": {
+    request: z.object({}),
+    response: tokenSavingsSnapshotSchema
   },
   "session.list": {
     request: z.object({
