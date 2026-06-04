@@ -10,6 +10,17 @@
   transition: opacity 400ms ease;
 }
 
+.startup-splash::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: var(--native-titlebar-height, 56px);
+  -webkit-app-region: drag;
+}
+
 .startup-splash--closing {
   opacity: 0;
   pointer-events: none;
@@ -22,6 +33,7 @@
   height: 100vh;
   object-fit: cover;
   background: var(--bg-void);
+  -webkit-app-region: no-drag;
 }
 
 .startup-splash__poster {
@@ -33,6 +45,7 @@
   background: var(--bg-void);
   opacity: 1;
   transition: opacity 280ms ease;
+  -webkit-app-region: no-drag;
 }
 
 .startup-splash__poster--hidden {

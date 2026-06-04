@@ -29,6 +29,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+html[data-platform="mac"] {
+  --native-titlebar-control-left: 92px;
+  --native-titlebar-height: 56px;
+}
+
 button,
 input,
 textarea,
@@ -42,6 +47,7 @@ select {
 }
 
 .app-shell {
+  position: relative;
   height: 100%;
   min-height: 0;
   display: grid;
@@ -53,6 +59,10 @@ select {
     linear-gradient(90deg, var(--surface-grid-line) 1px, transparent 1px),
     var(--bg-void);
   background-size: var(--space-8) var(--space-8);
+}
+
+html[data-platform="mac"] .app-shell {
+  padding-top: max(var(--space-12), var(--native-titlebar-height));
 }
 
 /* Sci-fi scrollbar — thin cyan tracer line */

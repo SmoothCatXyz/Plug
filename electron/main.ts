@@ -41,6 +41,15 @@ function applyDockIcon(): void {
   }
 }
 
+function applyMacNativeWindowChrome(windowOptions: BrowserWindowConstructorOptions): void {
+  if (process.platform !== "darwin") {
+    return;
+  }
+
+  windowOptions.titleBarStyle = "hiddenInset";
+  windowOptions.trafficLightPosition = { x: 18, y: 18 };
+}
+
 function loadRendererWindow(window: BrowserWindow, kind: "main" | "settings"): void {
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL);
@@ -88,6 +97,8 @@ function createMainWindow(): void {
     windowOptions.icon = iconPath;
   }
 
+  applyMacNativeWindowChrome(windowOptions);
+
   mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.once("ready-to-show", () => {
@@ -128,16 +139,13 @@ function openSettingsWindow(): void {
     }
   };
 
-  if (process.platform === "darwin") {
-    windowOptions.titleBarStyle = "hiddenInset";
-    windowOptions.trafficLightPosition = { x: 24, y: 24 };
-  }
-
   const iconPath = resolveAppIconPath();
 
   if (iconPath) {
     windowOptions.icon = iconPath;
   }
+
+  applyMacNativeWindowChrome(windowOptions);
 
   settingsWindow = new BrowserWindow(windowOptions);
 

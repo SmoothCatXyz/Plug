@@ -35,6 +35,19 @@
   padding: 0 var(--space-4);
 }
 
+html[data-platform="mac"] .workspace-topbar {
+  padding-left: max(var(--space-4), var(--native-titlebar-control-left));
+  -webkit-app-region: drag;
+}
+
+html[data-platform="mac"] .workspace-topbar button,
+html[data-platform="mac"] .workspace-topbar input,
+html[data-platform="mac"] .workspace-topbar select,
+html[data-platform="mac"] .workspace-topbar textarea,
+html[data-platform="mac"] .workspace-topbar__readouts {
+  -webkit-app-region: no-drag;
+}
+
 .workspace-topbar::after {
   content: "";
   position: absolute;
