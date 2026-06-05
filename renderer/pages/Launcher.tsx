@@ -4,6 +4,7 @@ import type { AppInfo, ProjectSummary, TemplateSummary } from "../../shared/type
 import type { CreateProjectDraft } from "../App";
 import plugLogo from "../assets/icons/plug-logo.svg?raw";
 import { HUDIcon, HUDPanel, Keycap, NumericText, StatusDot } from "../components/hud";
+import { commandHotkeys, usePlugHotkeys } from "../lib/keyboard-guards";
 import type { StatusDotStatus } from "../components/hud";
 import "./launcher.css";
 
@@ -78,21 +79,16 @@ export function Launcher({
     }
   }, [bridgeAvailable, newProjectSignal]);
 
-  useEffect(() => {
-    function handleShortcut(event: KeyboardEvent): void {
-      const isCommand = event.metaKey || event.ctrlKey;
-
-      if (isCommand && event.key.toLowerCase() === "n") {
-        event.preventDefault();
-        if (bridgeAvailable) {
-          setIsWizardOpen(true);
-        }
+  usePlugHotkeys(
+    commandHotkeys("n"),
+    () => {
+      if (bridgeAvailable) {
+        setIsWizardOpen(true);
       }
-    }
-
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, [bridgeAvailable]);
+    },
+    {},
+    [bridgeAvailable]
+  );
 
   async function handleChooseParent(): Promise<void> {
     const path = await onChooseProjectParent();

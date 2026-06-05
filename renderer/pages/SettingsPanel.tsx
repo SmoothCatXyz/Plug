@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactElement } from "react";
 import type {
   AppConfigSnapshot,
   McpServerConfig,
@@ -44,6 +44,7 @@ type SettingsPanelProps = {
 };
 
 const NEW_CUSTOM_PROVIDER_CATALOG_ID = "provider:new";
+const SETTINGS_AUTOSAVE_DELAY_MS = 550;
 const newProviderDraft: ProviderDraft = {
   label: "Custom Provider",
   type: "openai-compatible",
@@ -194,6 +195,48 @@ export function SettingsPanel({
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
+  const [providerDirty, setProviderDirty] = useState(false);
+  const [mcpDirty, setMcpDirty] = useState(false);
+  const [networkDirty, setNetworkDirty] = useState(false);
+  const [chatModelDirty, setChatModelDirty] = useState(false);
+  const [toolModelDirty, setToolModelDirty] = useState(false);
+  const providerSaveKey = useMemo(
+    () => makeSaveKey([selectedProviderCatalogId, providerDraft, modelsText]),
+    [modelsText, providerDraft, selectedProviderCatalogId]
+  );
+  const mcpSaveKey = useMemo(() => makeSaveKey([mcpDraft, mcpArgsText, mcpEnvText]), [
+    mcpArgsText,
+    mcpDraft,
+    mcpEnvText
+  ]);
+  const networkSaveKey = useMemo(() => makeSaveKey(networkDraft), [networkDraft]);
+  const chatModelSaveKey = useMemo(() => makeSaveKey(chatModelDraft), [chatModelDraft]);
+  const toolModelSaveKey = useMemo(() => makeSaveKey(toolModelDraft), [toolModelDraft]);
+  const providerSaveKeyRef = useRef(providerSaveKey);
+  const mcpSaveKeyRef = useRef(mcpSaveKey);
+  const networkSaveKeyRef = useRef(networkSaveKey);
+  const chatModelSaveKeyRef = useRef(chatModelSaveKey);
+  const toolModelSaveKeyRef = useRef(toolModelSaveKey);
+
+  useEffect(() => {
+    providerSaveKeyRef.current = providerSaveKey;
+  }, [providerSaveKey]);
+
+  useEffect(() => {
+    mcpSaveKeyRef.current = mcpSaveKey;
+  }, [mcpSaveKey]);
+
+  useEffect(() => {
+    networkSaveKeyRef.current = networkSaveKey;
+  }, [networkSaveKey]);
+
+  useEffect(() => {
+    chatModelSaveKeyRef.current = chatModelSaveKey;
+  }, [chatModelSaveKey]);
+
+  useEffect(() => {
+    toolModelSaveKeyRef.current = toolModelSaveKey;
+  }, [toolModelSaveKey]);
 
   useEffect(() => {
     if (!bridgeAvailable) {
@@ -213,6 +256,9 @@ export function SettingsPanel({
     setNetworkDraft(config.network);
     setChatModelDraft(config.chatModel);
     setToolModelDraft(config.toolModel);
+    setNetworkDirty(false);
+    setChatModelDirty(false);
+    setToolModelDirty(false);
   }, [config]);
 
   useEffect(() => {
@@ -239,6 +285,7 @@ export function SettingsPanel({
     setModelsText(draft.models.join(", "));
     setTestResult(null);
     setLocalError(null);
+    setProviderDirty(false);
   }, [selectedProviderCatalogId, selectedProviderCatalogItem]);
 
   useEffect(() => {
@@ -249,54 +296,164 @@ export function SettingsPanel({
       setMcpDraft(toMcpDraft(server));
       setMcpArgsText(server.args.join("\n"));
       setMcpEnvText(formatEnv(server.env));
+      setMcpDirty(false);
       return;
     }
 
     setMcpDraft(newMcpDraft);
     setMcpArgsText("");
     setMcpEnvText("");
+    setMcpDirty(false);
   }, [mcpServers, selectedMcpServer]);
 
-  async function handleSaveProvider(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setBusyLabel("Saving provider");
-    setLocalError(null);
+  const finishBusy = useCallback((label: string) => {
+    setBusyLabel((current) => (current === label ? null : current));
+  }, []);
 
-    try {
-      const models = parseModels(modelsText);
+  const updateProviderDraft = useCallback((updater: (current: ProviderDraft) => ProviderDraft) => {
+    setProviderDirty(true);
+    setLocalError(null);
+    setTestResult(null);
+    setProviderDraft(updater);
+  }, []);
+
+  const updateModelsText = useCallback((value: string) => {
+    setProviderDirty(true);
+    setLocalError(null);
+    setTestResult(null);
+    setModelsText(value);
+  }, []);
+
+  const updateMcpDraft = useCallback((updater: (current: McpServerDraft) => McpServerDraft) => {
+    setMcpDirty(true);
+    setLocalError(null);
+    setMcpDraft(updater);
+  }, []);
+
+  const updateMcpArgsText = useCallback((value: string) => {
+    setMcpDirty(true);
+    setLocalError(null);
+    setMcpArgsText(value);
+  }, []);
+
+  const updateMcpEnvText = useCallback((value: string) => {
+    setMcpDirty(true);
+    setLocalError(null);
+    setMcpEnvText(value);
+  }, []);
+
+  const updateNetworkDraft = useCallback((updater: (current: NetworkConfig | null) => NetworkConfig | null) => {
+    setNetworkDirty(true);
+    setLocalError(null);
+    setNetworkDraft(updater);
+  }, []);
+
+  const updateChatModelDraft = useCallback(
+    (updater: (current: ToolModelSelection | null) => ToolModelSelection | null) => {
+      setChatModelDirty(true);
+      setLocalError(null);
+      setChatModelDraft(updater);
+    },
+    []
+  );
+
+  const updateToolModelDraft = useCallback(
+    (updater: (current: ToolModelSelection | null) => ToolModelSelection | null) => {
+      setToolModelDirty(true);
+      setLocalError(null);
+      setToolModelDraft(updater);
+    },
+    []
+  );
+
+  const saveProviderDraftNow = useCallback(
+    async (saveKey = providerSaveKey): Promise<boolean> => {
+      const trimmedLabel = providerDraft.label.trim();
+      const trimmedBaseURL = providerDraft.baseURL.trim();
+      const trimmedModels = modelsText.trim();
+
+      if (!trimmedLabel || !trimmedBaseURL || !trimmedModels) {
+        return true;
+      }
+
+      let models: string[];
+      try {
+        models = parseModels(modelsText);
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "Provider model list is invalid.");
+        return false;
+      }
+
+      if (providerDraft.proxyMode === "custom" && !providerDraft.proxyUrl.trim()) {
+        return true;
+      }
+
       const wasNewCustomProvider = selectedProviderCatalogId === NEW_CUSTOM_PROVIDER_CATALOG_ID;
-      const savedDraft = {
+      const savedDraft: ProviderDraft = {
         ...providerDraft,
+        label: trimmedLabel,
+        baseURL: trimmedBaseURL,
         models,
         defaultModel: models.includes(providerDraft.defaultModel) ? providerDraft.defaultModel : models[0],
         apiKey: providerDraft.apiKey?.trim() || undefined
       };
+      const busy = "Saving provider";
 
-      await onUpsertProvider({
-        ...savedDraft,
-        label: savedDraft.label.trim(),
-        baseURL: savedDraft.baseURL.trim()
-      });
-      setProviderDraft((current) => ({ ...current, apiKey: "" }));
-      setTestResult(null);
+      setBusyLabel(busy);
+      setLocalError(null);
 
-      if (wasNewCustomProvider) {
-        const nextConfig = await onReloadConfig();
-        const savedProvider = nextConfig?.providers.find(
-          (provider) =>
-            provider.label === savedDraft.label.trim() &&
-            normalizeProviderBaseURL(provider.baseURL) === normalizeProviderBaseURL(savedDraft.baseURL)
-        );
-        if (savedProvider) {
-          setSelectedProviderCatalogId(`provider:${savedProvider.id}`);
+      try {
+        await onUpsertProvider(savedDraft);
+        if (providerSaveKeyRef.current === saveKey) {
+          setProviderDirty(false);
+          if (savedDraft.apiKey) {
+            setProviderDraft((current) => ({ ...current, apiKey: "" }));
+          }
         }
+        setTestResult(null);
+
+        if (wasNewCustomProvider) {
+          const nextConfig = await onReloadConfig();
+          const savedProvider = nextConfig?.providers.find(
+            (provider) =>
+              provider.label === trimmedLabel &&
+              normalizeProviderBaseURL(provider.baseURL) === normalizeProviderBaseURL(trimmedBaseURL)
+          );
+          if (savedProvider && providerSaveKeyRef.current === saveKey) {
+            setSelectedProviderCatalogId(`provider:${savedProvider.id}`);
+          }
+        }
+        return true;
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "Provider save failed.");
+        return false;
+      } finally {
+        finishBusy(busy);
       }
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : "Provider save failed.");
-    } finally {
-      setBusyLabel(null);
+    },
+    [
+      finishBusy,
+      modelsText,
+      onReloadConfig,
+      onUpsertProvider,
+      providerDraft,
+      providerSaveKey,
+      selectedProviderCatalogId
+    ]
+  );
+
+  useEffect(() => {
+    if (!providerDirty || !bridgeAvailable) {
+      return;
     }
-  }
+
+    const saveKey = providerSaveKey;
+    const timer = window.setTimeout(() => {
+      void saveProviderDraftNow(saveKey);
+    }, SETTINGS_AUTOSAVE_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [bridgeAvailable, providerDirty, providerSaveKey, saveProviderDraftNow]);
 
   async function handleDeleteProvider(): Promise<void> {
     if (!selectedProvider) {
@@ -316,58 +473,122 @@ export function SettingsPanel({
     }
   }
 
-  async function handleSaveToolModel(): Promise<void> {
-    if (!toolModelDraft) {
+  const saveChatModelNow = useCallback(
+    async (saveKey = chatModelSaveKey): Promise<boolean> => {
+      if (!chatModelDraft) {
+        return true;
+      }
+
+      const busy = "Saving chat model";
+      setBusyLabel(busy);
+      setLocalError(null);
+
+      try {
+        await onSetChatModel(chatModelDraft);
+        if (chatModelSaveKeyRef.current === saveKey) {
+          setChatModelDirty(false);
+        }
+        return true;
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "Chat model save failed.");
+        return false;
+      } finally {
+        finishBusy(busy);
+      }
+    },
+    [chatModelDraft, chatModelSaveKey, finishBusy, onSetChatModel]
+  );
+
+  useEffect(() => {
+    if (!chatModelDirty || !chatModelDraft || !bridgeAvailable) {
       return;
     }
 
-    setBusyLabel("Saving tool model");
-    setLocalError(null);
+    const saveKey = chatModelSaveKey;
+    const timer = window.setTimeout(() => {
+      void saveChatModelNow(saveKey);
+    }, SETTINGS_AUTOSAVE_DELAY_MS);
 
-    try {
-      await onSetToolModel(toolModelDraft);
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : "Tool model save failed.");
-    } finally {
-      setBusyLabel(null);
-    }
-  }
+    return () => window.clearTimeout(timer);
+  }, [bridgeAvailable, chatModelDirty, chatModelDraft, chatModelSaveKey, saveChatModelNow]);
 
-  async function handleSaveChatModel(): Promise<void> {
-    if (!chatModelDraft) {
+  const saveToolModelNow = useCallback(
+    async (saveKey = toolModelSaveKey): Promise<boolean> => {
+      if (!toolModelDraft) {
+        return true;
+      }
+
+      const busy = "Saving tool model";
+      setBusyLabel(busy);
+      setLocalError(null);
+
+      try {
+        await onSetToolModel(toolModelDraft);
+        if (toolModelSaveKeyRef.current === saveKey) {
+          setToolModelDirty(false);
+        }
+        return true;
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "Tool model save failed.");
+        return false;
+      } finally {
+        finishBusy(busy);
+      }
+    },
+    [finishBusy, onSetToolModel, toolModelDraft, toolModelSaveKey]
+  );
+
+  useEffect(() => {
+    if (!toolModelDirty || !toolModelDraft || !bridgeAvailable) {
       return;
     }
 
-    setBusyLabel("Saving chat model");
-    setLocalError(null);
+    const saveKey = toolModelSaveKey;
+    const timer = window.setTimeout(() => {
+      void saveToolModelNow(saveKey);
+    }, SETTINGS_AUTOSAVE_DELAY_MS);
 
-    try {
-      await onSetChatModel(chatModelDraft);
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : "Chat model save failed.");
-    } finally {
-      setBusyLabel(null);
-    }
-  }
+    return () => window.clearTimeout(timer);
+  }, [bridgeAvailable, saveToolModelNow, toolModelDirty, toolModelDraft, toolModelSaveKey]);
 
-  async function handleSaveNetwork(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  const saveNetworkNow = useCallback(
+    async (saveKey = networkSaveKey): Promise<boolean> => {
+      if (!networkDraft) {
+        return true;
+      }
 
-    if (!networkDraft) {
+      const busy = "Saving network";
+      setBusyLabel(busy);
+      setLocalError(null);
+
+      try {
+        await onSetNetwork(networkDraft);
+        if (networkSaveKeyRef.current === saveKey) {
+          setNetworkDirty(false);
+        }
+        return true;
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "Network save failed.");
+        return false;
+      } finally {
+        finishBusy(busy);
+      }
+    },
+    [finishBusy, networkDraft, networkSaveKey, onSetNetwork]
+  );
+
+  useEffect(() => {
+    if (!networkDirty || !networkDraft || !bridgeAvailable) {
       return;
     }
 
-    setBusyLabel("Saving network");
-    setLocalError(null);
+    const saveKey = networkSaveKey;
+    const timer = window.setTimeout(() => {
+      void saveNetworkNow(saveKey);
+    }, SETTINGS_AUTOSAVE_DELAY_MS);
 
-    try {
-      await onSetNetwork(networkDraft);
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : "Network save failed.");
-    } finally {
-      setBusyLabel(null);
-    }
-  }
+    return () => window.clearTimeout(timer);
+  }, [bridgeAvailable, networkDirty, networkDraft, networkSaveKey, saveNetworkNow]);
 
   async function handleTestProvider(): Promise<void> {
     const providerId = selectedProvider?.id;
@@ -390,27 +611,72 @@ export function SettingsPanel({
     }
   }
 
-  async function handleSaveMcpServer(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setBusyLabel("Saving MCP");
-    setLocalError(null);
+  const saveMcpServerNow = useCallback(
+    async (saveKey = mcpSaveKey): Promise<boolean> => {
+      const trimmedLabel = mcpDraft.label.trim();
+      const trimmedCommand = mcpDraft.command.trim();
 
-    try {
-      const servers = await onUpsertMcpServer({
+      if (!trimmedLabel || !trimmedCommand) {
+        return true;
+      }
+
+      let args: string[];
+      let env: Record<string, string>;
+      try {
+        args = parseLines(mcpArgsText);
+        env = parseEnv(mcpEnvText);
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "MCP server input is invalid.");
+        return false;
+      }
+
+      const busy = "Saving MCP";
+      const savedDraft: McpServerDraft = {
         ...mcpDraft,
-        args: parseLines(mcpArgsText),
-        env: parseEnv(mcpEnvText)
-      });
-      const savedServer = mcpDraft.id
-        ? servers.find((server) => server.id === mcpDraft.id)
-        : servers.find((server) => server.label === mcpDraft.label) ?? servers[0];
-      setSelectedMcpId(savedServer?.id ?? "");
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : "MCP server save failed.");
-    } finally {
-      setBusyLabel(null);
+        label: trimmedLabel,
+        command: trimmedCommand,
+        args,
+        env
+      };
+
+      setBusyLabel(busy);
+      setLocalError(null);
+
+      try {
+        const servers = await onUpsertMcpServer(savedDraft);
+        if (mcpSaveKeyRef.current === saveKey) {
+          setMcpDirty(false);
+        }
+
+        const savedServer = savedDraft.id
+          ? servers.find((server) => server.id === savedDraft.id)
+          : servers.find((server) => server.label === savedDraft.label) ?? servers[0];
+        if (savedServer && mcpSaveKeyRef.current === saveKey) {
+          setSelectedMcpId(savedServer.id);
+        }
+        return true;
+      } catch (error) {
+        setLocalError(error instanceof Error ? error.message : "MCP server save failed.");
+        return false;
+      } finally {
+        finishBusy(busy);
+      }
+    },
+    [finishBusy, mcpArgsText, mcpDraft, mcpEnvText, mcpSaveKey, onUpsertMcpServer]
+  );
+
+  useEffect(() => {
+    if (!mcpDirty || !bridgeAvailable) {
+      return;
     }
-  }
+
+    const saveKey = mcpSaveKey;
+    const timer = window.setTimeout(() => {
+      void saveMcpServerNow(saveKey);
+    }, SETTINGS_AUTOSAVE_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [bridgeAvailable, mcpDirty, mcpSaveKey, saveMcpServerNow]);
 
   async function handleDeleteMcpServer(): Promise<void> {
     if (!selectedMcpServer) {
@@ -460,44 +726,25 @@ export function SettingsPanel({
               label="Chat Model"
               config={config}
               selection={chatModelDraft}
-              onProviderChange={(providerId) => setChatModelDraft(modelSelectionForProvider(config, providerId))}
+              onProviderChange={(providerId) => updateChatModelDraft(() => modelSelectionForProvider(config, providerId))}
               onModelChange={(modelId) =>
-                setChatModelDraft((current) => (current ? { ...current, modelId } : current))
+                updateChatModelDraft((current) => (current ? { ...current, modelId } : current))
               }
             />
             <ModelRouteEditor
               label="Tool Model"
               config={config}
               selection={toolModelDraft}
-              onProviderChange={(providerId) => setToolModelDraft(modelSelectionForProvider(config, providerId))}
+              onProviderChange={(providerId) => updateToolModelDraft(() => modelSelectionForProvider(config, providerId))}
               onModelChange={(modelId) =>
-                setToolModelDraft((current) => (current ? { ...current, modelId } : current))
+                updateToolModelDraft((current) => (current ? { ...current, modelId } : current))
               }
             />
-          </div>
-
-          <div className="settings-actions settings-actions--split">
-            <button
-              className="hud-button hud-button--primary"
-              type="button"
-              disabled={!chatModelDraft || !bridgeAvailable || Boolean(busyLabel)}
-              onClick={() => void handleSaveChatModel()}
-            >
-              Save Chat
-            </button>
-            <button
-              className="hud-button hud-button--primary"
-              type="button"
-              disabled={!toolModelDraft || !bridgeAvailable || Boolean(busyLabel)}
-              onClick={() => void handleSaveToolModel()}
-            >
-              Save Tool
-            </button>
           </div>
         </section>
 
         {networkDraft ? (
-          <form className="settings-card" onSubmit={(event) => void handleSaveNetwork(event)}>
+          <section className="settings-card">
             <div className="settings-section-head settings-section-head--large">
               <div>
                 <span className="hud-label">Network</span>
@@ -512,7 +759,7 @@ export function SettingsPanel({
                 <select
                   value={networkDraft.proxyMode}
                   onChange={(event) =>
-                    setNetworkDraft((current) =>
+                    updateNetworkDraft((current) =>
                       current ? { ...current, proxyMode: event.target.value as NetworkConfig["proxyMode"] } : current
                     )
                   }
@@ -528,22 +775,16 @@ export function SettingsPanel({
                   value={networkDraft.proxyUrl}
                   disabled={networkDraft.proxyMode === "off"}
                   onChange={(event) =>
-                    setNetworkDraft((current) => (current ? { ...current, proxyUrl: event.target.value } : current))
+                    updateNetworkDraft((current) => (current ? { ...current, proxyUrl: event.target.value } : current))
                   }
                 />
               </label>
-              <NumberField label="Timeout" value={networkDraft.timeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, timeoutMs: value } : current)} />
-              <NumberField label="Long Timeout" value={networkDraft.longTimeoutMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, longTimeoutMs: value } : current)} />
-              <NumberField label="Retries" value={networkDraft.maxRetries} onChange={(value) => setNetworkDraft((current) => current ? { ...current, maxRetries: value } : current)} />
-              <NumberField label="Backoff" value={networkDraft.retryBaseDelayMs} onChange={(value) => setNetworkDraft((current) => current ? { ...current, retryBaseDelayMs: value } : current)} />
+              <NumberField label="Timeout" value={networkDraft.timeoutMs} onChange={(value) => updateNetworkDraft((current) => current ? { ...current, timeoutMs: value } : current)} />
+              <NumberField label="Long Timeout" value={networkDraft.longTimeoutMs} onChange={(value) => updateNetworkDraft((current) => current ? { ...current, longTimeoutMs: value } : current)} />
+              <NumberField label="Retries" value={networkDraft.maxRetries} onChange={(value) => updateNetworkDraft((current) => current ? { ...current, maxRetries: value } : current)} />
+              <NumberField label="Backoff" value={networkDraft.retryBaseDelayMs} onChange={(value) => updateNetworkDraft((current) => current ? { ...current, retryBaseDelayMs: value } : current)} />
             </div>
-
-            <div className="settings-actions">
-              <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-                Save Network
-              </button>
-            </div>
-          </form>
+          </section>
         ) : null}
       </div>
     );
@@ -557,14 +798,9 @@ export function SettingsPanel({
     const summary = isNewCustomProvider
       ? "Custom OpenAI-compatible endpoint."
       : selectedProviderCatalogItem?.summary ?? "OpenAI-compatible endpoint.";
-    const primaryAction = !selectedProvider
-      ? "Enable Provider"
-      : selectedProvider.hasApiKey
-        ? "Save Changes"
-        : "Save API Key";
 
     return (
-      <form className="settings-card settings-provider-detail-card" onSubmit={(event) => void handleSaveProvider(event)}>
+      <section className="settings-card settings-provider-detail-card">
         <div className="settings-provider-hero">
           <div className="settings-provider-identity">
             <div className="settings-provider-logo" aria-hidden="true">
@@ -580,10 +816,6 @@ export function SettingsPanel({
               <p>{summary}</p>
             </div>
           </div>
-
-          <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-            {primaryAction}
-          </button>
         </div>
 
         <div className="settings-provider-facts">
@@ -608,14 +840,14 @@ export function SettingsPanel({
               type="password"
               value={providerDraft.apiKey ?? ""}
               placeholder={selectedProvider?.hasApiKey ? "configured" : "Enter API key"}
-              onChange={(event) => setProviderDraft((current) => ({ ...current, apiKey: event.target.value }))}
+              onChange={(event) => updateProviderDraft((current) => ({ ...current, apiKey: event.target.value }))}
             />
           </label>
           <label className="hud-field">
             <span>Default Model</span>
             <select
               value={providerDraft.defaultModel}
-              onChange={(event) => setProviderDraft((current) => ({ ...current, defaultModel: event.target.value }))}
+              onChange={(event) => updateProviderDraft((current) => ({ ...current, defaultModel: event.target.value }))}
             >
               {modelOptions.map((model) => (
                 <option key={model} value={model}>
@@ -629,7 +861,7 @@ export function SettingsPanel({
             <select
               value={providerDraft.proxyMode}
               onChange={(event) =>
-                setProviderDraft((current) => ({
+                updateProviderDraft((current) => ({
                   ...current,
                   proxyMode: event.target.value as ProviderDraft["proxyMode"]
                 }))
@@ -645,7 +877,7 @@ export function SettingsPanel({
             <input
               value={providerDraft.proxyUrl}
               disabled={providerDraft.proxyMode !== "custom"}
-              onChange={(event) => setProviderDraft((current) => ({ ...current, proxyUrl: event.target.value }))}
+              onChange={(event) => updateProviderDraft((current) => ({ ...current, proxyUrl: event.target.value }))}
             />
           </label>
         </div>
@@ -657,19 +889,19 @@ export function SettingsPanel({
               <span>Label</span>
               <input
                 value={providerDraft.label}
-                onChange={(event) => setProviderDraft((current) => ({ ...current, label: event.target.value }))}
+                onChange={(event) => updateProviderDraft((current) => ({ ...current, label: event.target.value }))}
               />
             </label>
             <label className="hud-field">
               <span>Base URL</span>
               <input
                 value={providerDraft.baseURL}
-                onChange={(event) => setProviderDraft((current) => ({ ...current, baseURL: event.target.value }))}
+                onChange={(event) => updateProviderDraft((current) => ({ ...current, baseURL: event.target.value }))}
               />
             </label>
             <label className="hud-field hud-field--wide">
               <span>Models</span>
-              <input value={modelsText} onChange={(event) => setModelsText(event.target.value)} />
+              <input value={modelsText} onChange={(event) => updateModelsText(event.target.value)} />
             </label>
           </div>
         </details>
@@ -692,7 +924,7 @@ export function SettingsPanel({
             Test
           </button>
         </div>
-      </form>
+      </section>
     );
   }
 
@@ -748,6 +980,7 @@ export function SettingsPanel({
               setSelectedProviderCatalogId(NEW_CUSTOM_PROVIDER_CATALOG_ID);
               setProviderDraft(newProviderDraft);
               setModelsText(newProviderDraft.models.join(", "));
+              setProviderDirty(false);
               setProviderSearch("");
               setTestResult(null);
               setLocalError(null);
@@ -784,7 +1017,7 @@ export function SettingsPanel({
   function renderMcpServersSection(): ReactElement {
     return (
       <div className="settings-mcp-page">
-        <form className="settings-card" onSubmit={(event) => void handleSaveMcpServer(event)}>
+        <section className="settings-card">
           <div className="settings-section-head settings-section-head--large">
             <div>
               <span className="hud-label">MCP Servers</span>
@@ -798,6 +1031,7 @@ export function SettingsPanel({
                 setMcpDraft(newMcpDraft);
                 setMcpArgsText("");
                 setMcpEnvText("");
+                setMcpDirty(false);
               }}
             >
               New
@@ -828,14 +1062,14 @@ export function SettingsPanel({
               <span>Label</span>
               <input
                 value={mcpDraft.label}
-                onChange={(event) => setMcpDraft((current) => ({ ...current, label: event.target.value }))}
+                onChange={(event) => updateMcpDraft((current) => ({ ...current, label: event.target.value }))}
               />
             </label>
             <label className="hud-field">
               <span>Enabled</span>
               <select
                 value={mcpDraft.enabled ? "yes" : "no"}
-                onChange={(event) => setMcpDraft((current) => ({ ...current, enabled: event.target.value === "yes" }))}
+                onChange={(event) => updateMcpDraft((current) => ({ ...current, enabled: event.target.value === "yes" }))}
               >
                 <option value="yes">Enabled</option>
                 <option value="no">Disabled</option>
@@ -846,7 +1080,7 @@ export function SettingsPanel({
               <select
                 value={mcpDraft.aiWriteLevel}
                 onChange={(event) =>
-                  setMcpDraft((current) => ({ ...current, aiWriteLevel: event.target.value as McpServerDraft["aiWriteLevel"] }))
+                  updateMcpDraft((current) => ({ ...current, aiWriteLevel: event.target.value as McpServerDraft["aiWriteLevel"] }))
                 }
               >
                 <option value="read">Read</option>
@@ -858,16 +1092,16 @@ export function SettingsPanel({
               <span>Command</span>
               <input
                 value={mcpDraft.command}
-                onChange={(event) => setMcpDraft((current) => ({ ...current, command: event.target.value }))}
+                onChange={(event) => updateMcpDraft((current) => ({ ...current, command: event.target.value }))}
               />
             </label>
-            <NumberField label="Timeout" value={mcpDraft.timeoutMs} onChange={(value) => setMcpDraft((current) => ({ ...current, timeoutMs: value }))} />
+            <NumberField label="Timeout" value={mcpDraft.timeoutMs} onChange={(value) => updateMcpDraft((current) => ({ ...current, timeoutMs: value }))} />
             <label className="hud-field hud-field--wide">
               <span>Args</span>
               <textarea
                 value={mcpArgsText}
                 placeholder="/path/to/server.js"
-                onChange={(event) => setMcpArgsText(event.target.value)}
+                onChange={(event) => updateMcpArgsText(event.target.value)}
               />
             </label>
             <label className="hud-field hud-field--wide">
@@ -875,15 +1109,12 @@ export function SettingsPanel({
               <textarea
                 value={mcpEnvText}
                 placeholder="API_KEY=value"
-                onChange={(event) => setMcpEnvText(event.target.value)}
+                onChange={(event) => updateMcpEnvText(event.target.value)}
               />
             </label>
           </div>
 
           <div className="settings-actions">
-            <button className="hud-button hud-button--primary" type="submit" disabled={!bridgeAvailable || Boolean(busyLabel)}>
-              Save MCP
-            </button>
             <button
               className="hud-button"
               type="button"
@@ -901,7 +1132,7 @@ export function SettingsPanel({
               Delete
             </button>
           </div>
-        </form>
+        </section>
 
         <section className="settings-card settings-mcp-health">
           <div className="settings-section-head">
@@ -1027,6 +1258,63 @@ export function SettingsPanel({
     return renderPlaceholderSection(activeSection);
   }
 
+  const handleCloseSettings = useCallback(() => {
+    if (!bridgeAvailable) {
+      onClose();
+      return;
+    }
+
+    const pendingSaves: Promise<boolean>[] = [];
+
+    if (providerDirty) {
+      pendingSaves.push(saveProviderDraftNow(providerSaveKey));
+    }
+    if (mcpDirty) {
+      pendingSaves.push(saveMcpServerNow(mcpSaveKey));
+    }
+    if (networkDirty) {
+      pendingSaves.push(saveNetworkNow(networkSaveKey));
+    }
+    if (chatModelDirty) {
+      pendingSaves.push(saveChatModelNow(chatModelSaveKey));
+    }
+    if (toolModelDirty) {
+      pendingSaves.push(saveToolModelNow(toolModelSaveKey));
+    }
+
+    if (!pendingSaves.length) {
+      onClose();
+      return;
+    }
+
+    void Promise.all(pendingSaves).then((results) => {
+      if (results.every(Boolean)) {
+        onClose();
+      }
+    });
+  }, [
+    bridgeAvailable,
+    chatModelDirty,
+    chatModelSaveKey,
+    mcpDirty,
+    mcpSaveKey,
+    networkDirty,
+    networkSaveKey,
+    onClose,
+    providerDirty,
+    providerSaveKey,
+    saveChatModelNow,
+    saveMcpServerNow,
+    saveNetworkNow,
+    saveProviderDraftNow,
+    saveToolModelNow,
+    toolModelDirty,
+    toolModelSaveKey
+  ]);
+
+  const hasPendingChanges = providerDirty || mcpDirty || networkDirty || chatModelDirty || toolModelDirty;
+  const footerStatus = busyLabel ?? (hasPendingChanges ? "Pending changes" : "All changes saved");
+
   return (
     <div className="settings-window-root" role="application" aria-label="Settings">
       <HUDPanel className="settings-panel settings-panel--workspace" label="Plug settings" active>
@@ -1063,9 +1351,10 @@ export function SettingsPanel({
           <footer className="settings-footer">
             <div>
               {localError ? <p className="settings-error">{localError}</p> : null}
+              <p className="settings-save-status">{footerStatus}</p>
               <p className="settings-config-path">{`${config?.configPath ?? "~/.plug/config.json"} · ${mcpConfigPath ?? "~/.plug/mcp.json"}`}</p>
             </div>
-            <button className="hud-button" type="button" onClick={onClose}>
+            <button className="hud-button" type="button" onClick={handleCloseSettings}>
               Close
             </button>
           </footer>
@@ -1096,6 +1385,10 @@ function ProviderButton({ provider, active, onSelect }: ProviderButtonProps): Re
       <StatusDot status={status.dotStatus} label={status.label} />
     </button>
   );
+}
+
+function makeSaveKey(value: unknown): string {
+  return JSON.stringify(value);
 }
 
 function buildProviderCatalog(providers: ProviderSummary[]): ProviderCatalogItem[] {

@@ -26,6 +26,7 @@ import type {
 import { pendingToolApprovalSchema } from "../shared/tool-schema";
 import { CommandPalette, type CommandPaletteAction } from "./components/CommandPalette";
 import { StartupSplash } from "./components/StartupSplash";
+import { commandHotkeys, usePlugHotkeys } from "./lib/keyboard-guards";
 import { Launcher } from "./pages/Launcher";
 import { SettingsPanel } from "./pages/SettingsPanel";
 import { Workspace } from "./pages/Workspace";
@@ -61,6 +62,16 @@ type BootstrapState = {
   // Set when the agent writes a document it wants revealed in the side panel.
   openDocumentRequest: { path: string; nonce: number } | null;
 };
+
+const APP_COMMAND_HOTKEYS = [
+  ...commandHotkeys("n"),
+  ...commandHotkeys("o"),
+  ...commandHotkeys(","),
+  ...commandHotkeys("k"),
+  ...commandHotkeys("r"),
+  ...commandHotkeys("t"),
+  ...Array.from({ length: 9 }, (_, index) => commandHotkeys(String(index + 1))).flat()
+];
 
 export type CreateProjectDraft = {
   templateId: string;
@@ -1124,51 +1135,39 @@ export function App(): ReactElement {
     };
   }, [isSettingsWindow, loadWorkspace, startupVisible]);
 
-  useEffect(() => {
-    function handleShortcut(event: KeyboardEvent): void {
-      const isCommand = event.metaKey || event.ctrlKey;
-
-      if (!isCommand) {
-        return;
-      }
-
+  usePlugHotkeys(
+    APP_COMMAND_HOTKEYS,
+    (event) => {
       const key = event.key.toLowerCase();
 
       if (state.commandPaletteOpen) {
         if (key === "k") {
-          event.preventDefault();
           setState((current) => ({ ...current, commandPaletteOpen: false }));
         }
         return;
       }
 
       if (key === "n") {
-        event.preventDefault();
         showNewProjectWizard();
       }
 
       if (key === "o") {
-        event.preventDefault();
         void registerProject();
       }
 
       if (key === ",") {
-        event.preventDefault();
         void openSettingsWindow();
       }
 
       if (key === "k") {
-        event.preventDefault();
         setState((current) => ({ ...current, commandPaletteOpen: true }));
       }
 
       if (key === "r") {
-        event.preventDefault();
         void reloadProjects();
       }
 
       if (key === "t" && state.workspace) {
-        event.preventDefault();
         void createSession(state.workspace.project.id);
       }
 
@@ -1176,15 +1175,12 @@ export function App(): ReactElement {
         const session = state.sessionSnapshot.sessions[Number(key) - 1];
 
         if (session) {
-          event.preventDefault();
           void openSession(state.workspace.project.id, session.id);
         }
       }
-    }
-
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, [
+    },
+    {},
+    [
     createSession,
     openSession,
     openSettingsWindow,
@@ -1194,7 +1190,8 @@ export function App(): ReactElement {
     state.commandPaletteOpen,
     state.sessionSnapshot,
     state.workspace
-  ]);
+    ]
+  );
 
   const activeProjectId = state.workspace?.project.id ?? null;
   const activeApproval =

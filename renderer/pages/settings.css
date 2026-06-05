@@ -166,6 +166,7 @@
 }
 
 .settings-footer .settings-error,
+.settings-footer .settings-save-status,
 .settings-footer .settings-config-path {
   border-top: 0;
   padding: 0;
@@ -1036,6 +1037,15 @@
   font-size: var(--text-size-xs);
   overflow-wrap: anywhere;
   padding: var(--space-3);
+}
+
+.settings-save-status {
+  margin: 0 0 var(--space-1);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 @media (max-width: 1100px) {

@@ -18,6 +18,7 @@ import { HUDPanel, NumericText, StatusDot } from "../components/hud";
 import { playUiSound } from "../services/audio-service";
 import { startRecording, stopAndTranscribe } from "../services/whisper-service";
 import { useChatScroll } from "../hooks/useChatScroll";
+import { commandHotkeys, isImeComposing, usePlugHotkeys } from "../lib/keyboard-guards";
 import "./workspace.css";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -366,50 +367,38 @@ export function Workspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  useEffect(() => {
-    function handleWorkspaceShortcut(event: globalThis.KeyboardEvent): void {
-      const isCommand = event.metaKey || event.ctrlKey;
-
-      if (!isCommand) {
-        return;
-      }
-
+  usePlugHotkeys(
+    [...commandHotkeys("b"), ...commandHotkeys("\\")],
+    (event) => {
       const key = event.key.toLowerCase();
 
       if (key === "b") {
-        event.preventDefault();
         setNavPanelCollapsed((current) => !current);
       }
 
       if (key === "\\") {
-        event.preventDefault();
         setDocPanelCollapsed((current) => !current);
       }
-    }
+    },
+    {},
+    []
+  );
 
-    window.addEventListener("keydown", handleWorkspaceShortcut);
-    return () => window.removeEventListener("keydown", handleWorkspaceShortcut);
-  }, [agentMode, onSetAgentMode, soundMuted, soundVolume]);
-
-  useEffect(() => {
-    function handleAuthorizationShortcut(event: globalThis.KeyboardEvent): void {
+  usePlugHotkeys(
+    ["y", "n"],
+    (event) => {
       if (!authorizationModalOpen || !activeApproval) {
         return;
       }
 
       const key = event.key.toLowerCase();
-
-      if (key !== "y" && key !== "n") {
-        return;
-      }
-
-      event.preventDefault();
       void resolveActiveApproval(key === "y" ? "approve" : "reject");
-    }
-
-    window.addEventListener("keydown", handleAuthorizationShortcut);
-    return () => window.removeEventListener("keydown", handleAuthorizationShortcut);
-  }, [activeApproval, authorizationModalOpen]);
+    },
+    {
+      enabled: authorizationModalOpen && Boolean(activeApproval)
+    },
+    [activeApproval, authorizationModalOpen]
+  );
 
   const openLinkedDocument = useCallback(
     async (path: string): Promise<void> => {
@@ -467,6 +456,10 @@ export function Workspace({
   }, [chatInput, chatRunning, onSendMessage, sessionSnapshot]);
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+    if (isImeComposing(event)) {
+      return;
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void submitChat();

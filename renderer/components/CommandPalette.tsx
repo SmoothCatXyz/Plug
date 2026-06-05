@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
 import { Keycap, StatusDot } from "./hud";
+import { isImeComposing } from "../lib/keyboard-guards";
 import "./command-palette.css";
 
 export type CommandPaletteAction = {
@@ -66,6 +67,10 @@ export function CommandPalette({ open, actions, onClose }: CommandPaletteProps):
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (isImeComposing(event)) {
+      return;
+    }
+
     if (event.key === "Escape") {
       event.preventDefault();
       onClose();
