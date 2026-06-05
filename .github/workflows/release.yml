@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -56,10 +56,10 @@ jobs:
           if [ -n "${CSC_LINK}" ]; then
             if [ -n "${APPLE_ID}" ]; then NOTARIZE="-c.mac.notarize=true"; else NOTARIZE=""; fi
             echo "::notice::macOS — signing${APPLE_ID:+ + notarizing}"
-            npx electron-builder --mac --arm64 $NOTARIZE
+            npx electron-builder --mac --arm64 --publish never $NOTARIZE
           else
             echo "::warning::macOS — no signing secrets, building UNSIGNED"
-            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64 --publish never
           fi
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -72,7 +72,7 @@ jobs:
         if: runner.os == 'Windows'
         # electron-builder signs when CSC_LINK is provided and silently skips
         # signing when it is empty — no branching needed on Windows.
-        run: npx electron-builder --win --x64
+        run: npx electron-builder --win --x64 --publish never
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
