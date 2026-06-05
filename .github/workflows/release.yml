@@ -59,6 +59,7 @@ jobs:
             npx electron-builder --mac --arm64 --publish never $NOTARIZE
           else
             echo "::warning::macOS — no signing secrets, building UNSIGNED"
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
             CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64 --publish never
           fi
         env:
