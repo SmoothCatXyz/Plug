@@ -1,5 +1,6 @@
 name: Release
 
+# Push to `main` or run manually to build downloadable release artifacts.
 # Tag a commit (e.g. `git tag v0.1.0 && git push origin v0.1.0`) to build and
 # publish the macOS (Apple Silicon) and Windows installers to a GitHub Release.
 #
@@ -9,7 +10,10 @@ name: Release
 #            APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (for notarize)
 #   Windows: WIN_CSC_LINK (base64 .pfx), WIN_CSC_KEY_PASSWORD
 on:
+  workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
@@ -73,8 +77,17 @@ jobs:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plug-${{ runner.os }}-${{ github.ref_name }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+
       - name: Attach installer to release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: ${{ matrix.artifacts }}
           fail_on_unmatched_files: false
