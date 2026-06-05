@@ -45,6 +45,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Use tag as package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm version --no-git-tag-version "$VERSION"
+
       - run: npm ci
 
       - name: Build app bundle
