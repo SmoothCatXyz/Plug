@@ -10,7 +10,8 @@ import type {
   ProviderSummary,
   ProviderTestResult,
   TokenSavingsSnapshot,
-  ToolModelSelection
+  ToolModelSelection,
+  UpdateSnapshot
 } from "../../shared/types";
 import type { ProviderPreset } from "../../shared/provider-presets";
 import {
@@ -19,6 +20,7 @@ import {
   providerPresets
 } from "../../shared/provider-presets";
 import { HUDPanel, NumericText, StatusDot } from "../components/hud";
+import type { StatusDotStatus } from "../components/hud";
 import "./settings.css";
 
 type SettingsPanelProps = {
@@ -27,6 +29,7 @@ type SettingsPanelProps = {
   mcpConfigPath: string | null;
   mcpHealthChecks: McpServerHealth[];
   tokenSavings: TokenSavingsSnapshot | null;
+  updateSnapshot: UpdateSnapshot | null;
   bridgeAvailable: boolean;
   onClose: () => void;
   onReloadConfig: () => Promise<AppConfigSnapshot | null>;
@@ -41,6 +44,9 @@ type SettingsPanelProps = {
   onUpsertMcpServer: (draft: McpServerDraft) => Promise<McpServerConfig[]>;
   onDeleteMcpServer: (id: string) => Promise<McpServerConfig[]>;
   onCheckMcpHealth: (id?: string) => Promise<McpServerHealth[]>;
+  onCheckForUpdates: () => Promise<UpdateSnapshot>;
+  onDownloadUpdate: () => Promise<UpdateSnapshot>;
+  onInstallUpdate: () => Promise<void>;
 };
 
 const NEW_CUSTOM_PROVIDER_CATALOG_ID = "provider:new";
@@ -80,6 +86,7 @@ type SettingsSectionId =
   | "activity-recorder"
   | "computer-use"
   | "appshots"
+  | "updates"
   | "mcp-servers"
   | "skills"
   | "plugins"
@@ -116,6 +123,7 @@ const settingsSections: SettingsSection[] = [
   { id: "activity-recorder", label: "Activity Recorder", icon: "AR" },
   { id: "computer-use", label: "Computer Use", icon: "CU" },
   { id: "appshots", label: "Appshots", icon: "AS" },
+  { id: "updates", label: "Updates", icon: "UP" },
   { id: "mcp-servers", label: "MCP Servers", icon: "MC" },
   { id: "skills", label: "Skills", icon: "SK" },
   { id: "plugins", label: "Plugins", icon: "PL" },
@@ -129,6 +137,7 @@ export function SettingsPanel({
   mcpConfigPath,
   mcpHealthChecks,
   tokenSavings,
+  updateSnapshot,
   bridgeAvailable,
   onClose,
   onReloadConfig,
@@ -142,7 +151,10 @@ export function SettingsPanel({
   onTestProvider,
   onUpsertMcpServer,
   onDeleteMcpServer,
-  onCheckMcpHealth
+  onCheckMcpHealth,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onInstallUpdate
 }: SettingsPanelProps): ReactElement {
   const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>("general");
   const [selectedProviderCatalogId, setSelectedProviderCatalogId] = useState<string>(
@@ -709,6 +721,45 @@ export function SettingsPanel({
     }
   }
 
+  async function handleCheckForUpdates(): Promise<void> {
+    setBusyLabel("Checking updates");
+    setLocalError(null);
+
+    try {
+      await onCheckForUpdates();
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Update check failed.");
+    } finally {
+      setBusyLabel(null);
+    }
+  }
+
+  async function handleDownloadUpdate(): Promise<void> {
+    setBusyLabel("Downloading update");
+    setLocalError(null);
+
+    try {
+      await onDownloadUpdate();
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Update download failed.");
+    } finally {
+      setBusyLabel(null);
+    }
+  }
+
+  async function handleInstallUpdate(): Promise<void> {
+    setBusyLabel("Installing update");
+    setLocalError(null);
+
+    try {
+      await onInstallUpdate();
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : "Update install failed.");
+    } finally {
+      setBusyLabel(null);
+    }
+  }
+
   function renderGeneralSection(): ReactElement {
     return (
       <div className="settings-section-stack">
@@ -1228,6 +1279,90 @@ export function SettingsPanel({
     );
   }
 
+  function renderUpdatesSection(): ReactElement {
+    const update = updateSnapshot;
+    const progress = update?.progress;
+    const statusLabel = update ? updateStatusLabel(update) : "Unavailable";
+    const statusTone = update ? updateStatusDot(update) : "waiting";
+
+    return (
+      <div className="settings-section-stack">
+        <section className="settings-card settings-update-card">
+          <div className="settings-section-head settings-section-head--large">
+            <div>
+              <span className="hud-label">GitHub Releases</span>
+              <h3>Application Update</h3>
+            </div>
+            <StatusDot status={statusTone} label={statusLabel} />
+          </div>
+
+          <div className="settings-provider-facts settings-update-facts">
+            <div>
+              <span>Current Version</span>
+              <strong>{update?.currentVersion ?? "Unknown"}</strong>
+            </div>
+            <div>
+              <span>Latest Version</span>
+              <strong>{update?.updateVersion ?? "Not checked"}</strong>
+            </div>
+            <div>
+              <span>Release Date</span>
+              <strong>{formatUpdateDate(update?.releaseDate)}</strong>
+            </div>
+          </div>
+
+          {progress ? (
+            <div className="settings-update-progress" aria-label="Update download progress">
+              <div>
+                <strong>{`${Math.round(progress.percent)}%`}</strong>
+                <span>{formatBytes(progress.transferred)} / {formatBytes(progress.total)}</span>
+              </div>
+              <div className="settings-update-progress__track">
+                <span style={{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }} />
+              </div>
+            </div>
+          ) : null}
+
+          {update?.releaseNotes ? (
+            <div className="settings-update-notes">
+              <span className="hud-label">{update.releaseName ?? "Release Notes"}</span>
+              <p>{update.releaseNotes}</p>
+            </div>
+          ) : null}
+
+          {update?.error ? <p className="settings-error">{update.error}</p> : null}
+
+          <div className="settings-actions settings-actions--split">
+            <button
+              className="hud-button"
+              type="button"
+              disabled={!bridgeAvailable || Boolean(busyLabel) || !update?.canCheck}
+              onClick={() => void handleCheckForUpdates()}
+            >
+              Check
+            </button>
+            <button
+              className="hud-button hud-button--primary"
+              type="button"
+              disabled={!bridgeAvailable || Boolean(busyLabel) || !update?.canDownload}
+              onClick={() => void handleDownloadUpdate()}
+            >
+              Download
+            </button>
+            <button
+              className="hud-button hud-button--primary"
+              type="button"
+              disabled={!bridgeAvailable || Boolean(busyLabel) || !update?.canInstall}
+              onClick={() => void handleInstallUpdate()}
+            >
+              Install and Restart
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function renderPlaceholderSection(section: SettingsSection): ReactElement {
     return (
       <section className="settings-card settings-placeholder-card">
@@ -1253,6 +1388,10 @@ export function SettingsPanel({
 
     if (activeSectionId === "token-savings") {
       return renderTokenSavingsSection();
+    }
+
+    if (activeSectionId === "updates") {
+      return renderUpdatesSection();
     }
 
     return renderPlaceholderSection(activeSection);
@@ -1389,6 +1528,84 @@ function ProviderButton({ provider, active, onSelect }: ProviderButtonProps): Re
 
 function makeSaveKey(value: unknown): string {
   return JSON.stringify(value);
+}
+
+function updateStatusLabel(update: UpdateSnapshot): string {
+  if (update.status === "available") {
+    return "Available";
+  }
+
+  if (update.status === "not-available") {
+    return "Current";
+  }
+
+  if (update.status === "downloading") {
+    return "Downloading";
+  }
+
+  if (update.status === "downloaded") {
+    return "Ready";
+  }
+
+  if (update.status === "checking") {
+    return "Checking";
+  }
+
+  if (update.status === "error") {
+    return "Blocked";
+  }
+
+  return "Idle";
+}
+
+function updateStatusDot(update: UpdateSnapshot): StatusDotStatus {
+  if (update.status === "checking" || update.status === "downloading") {
+    return "running";
+  }
+
+  if (update.status === "downloaded" || update.status === "not-available") {
+    return "complete";
+  }
+
+  if (update.status === "error") {
+    return "error";
+  }
+
+  if (update.status === "available") {
+    return "waiting";
+  }
+
+  return "pending";
+}
+
+function formatUpdateDate(value?: string | null): string {
+  if (!value) {
+    return "Not checked";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString();
+}
+
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let amount = value;
+  let unitIndex = 0;
+
+  while (amount >= 1024 && unitIndex < units.length - 1) {
+    amount /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${amount >= 10 || unitIndex === 0 ? Math.round(amount) : amount.toFixed(1)} ${units[unitIndex]}`;
 }
 
 function buildProviderCatalog(providers: ProviderSummary[]): ProviderCatalogItem[] {

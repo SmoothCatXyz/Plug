@@ -21,6 +21,7 @@ import type {
   ToolDescriptor,
   ToolModelSelection,
   ToolStreamEvent,
+  UpdateSnapshot,
   WorkspaceSnapshot
 } from "../shared/types";
 import { pendingToolApprovalSchema } from "../shared/tool-schema";
@@ -42,6 +43,7 @@ type BootstrapState = {
   mcpConfigPath: string | null;
   mcpHealthChecks: McpServerHealth[];
   tokenSavings: TokenSavingsSnapshot | null;
+  updateSnapshot: UpdateSnapshot | null;
   promptApps: CustomPromptApp[];
   promptAppsPath: string | null;
   sessionSnapshot: SessionSnapshot | null;
@@ -100,6 +102,7 @@ export function App(): ReactElement {
     mcpConfigPath: null,
     mcpHealthChecks: [],
     tokenSavings: null,
+    updateSnapshot: null,
     promptApps: [],
     promptAppsPath: null,
     sessionSnapshot: null,
@@ -130,6 +133,7 @@ export function App(): ReactElement {
       mcpConfigPath: null,
       mcpHealthChecks: [],
       tokenSavings: null,
+      updateSnapshot: null,
       promptApps: [],
       promptAppsPath: null,
       pendingApprovals: [],
@@ -551,6 +555,19 @@ export function App(): ReactElement {
     };
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = window.plug?.onUpdateEvent((updateSnapshot: UpdateSnapshot) => {
+      setState((current) => ({
+        ...current,
+        updateSnapshot
+      }));
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
+
   // When the agent writes a document, open it in the side panel.
   useEffect(() => {
     const request = state.openDocumentRequest;
@@ -668,6 +685,58 @@ export function App(): ReactElement {
     },
     [markBridgeUnavailable]
   );
+
+  const checkForUpdates = useCallback(async (): Promise<UpdateSnapshot> => {
+    const plug = window.plug;
+
+    if (!plug) {
+      markBridgeUnavailable();
+      throw new Error("Electron IPC bridge unavailable.");
+    }
+
+    const updateSnapshot = await plug.invoke("update.check", {});
+    setState((current) => ({
+      ...current,
+      updateSnapshot,
+      statusMessage: updateSnapshot.error ?? updateStatusMessage(updateSnapshot),
+      error: updateSnapshot.error
+    }));
+    return updateSnapshot;
+  }, [markBridgeUnavailable]);
+
+  const downloadUpdate = useCallback(async (): Promise<UpdateSnapshot> => {
+    const plug = window.plug;
+
+    if (!plug) {
+      markBridgeUnavailable();
+      throw new Error("Electron IPC bridge unavailable.");
+    }
+
+    const updateSnapshot = await plug.invoke("update.download", {});
+    setState((current) => ({
+      ...current,
+      updateSnapshot,
+      statusMessage: updateSnapshot.error ?? updateStatusMessage(updateSnapshot),
+      error: updateSnapshot.error
+    }));
+    return updateSnapshot;
+  }, [markBridgeUnavailable]);
+
+  const installUpdate = useCallback(async (): Promise<void> => {
+    const plug = window.plug;
+
+    if (!plug) {
+      markBridgeUnavailable();
+      return;
+    }
+
+    const result = await plug.invoke("update.install", {});
+    setState((current) => ({
+      ...current,
+      statusMessage: result.ok ? "Installing update." : "No downloaded update is ready to install.",
+      error: result.ok ? null : "No downloaded update is ready to install."
+    }));
+  }, [markBridgeUnavailable]);
 
   const openWorkspaceSection = useCallback(
     async (projectId: string, sectionId: string): Promise<void> => {
@@ -1068,7 +1137,8 @@ export function App(): ReactElement {
           config,
           promptAppSnapshot,
           mcpSnapshot,
-          tokenSavings
+          tokenSavings,
+          updateSnapshot
         ] = await Promise.all([
           plug.invoke("app.info", {}),
           plug.invoke("project.list", {}),
@@ -1078,7 +1148,8 @@ export function App(): ReactElement {
           plug.invoke("config.get", {}),
           plug.invoke("promptApp.list", {}),
           plug.invoke("mcp.list", {}),
-          plug.invoke("tokenSavings.get", {})
+          plug.invoke("tokenSavings.get", {}),
+          plug.invoke("update.getStatus", {})
         ]);
 
         if (!cancelled) {
@@ -1093,6 +1164,7 @@ export function App(): ReactElement {
             mcpConfigPath: mcpSnapshot.path,
             mcpHealthChecks: [],
             tokenSavings,
+            updateSnapshot,
             promptApps: promptAppSnapshot.apps,
             promptAppsPath: promptAppSnapshot.path,
             bridgeAvailable: true,
@@ -1247,6 +1319,7 @@ export function App(): ReactElement {
       mcpConfigPath={state.mcpConfigPath}
       mcpHealthChecks={state.mcpHealthChecks}
       tokenSavings={state.tokenSavings}
+      updateSnapshot={state.updateSnapshot}
       bridgeAvailable={state.bridgeAvailable}
       onClose={() => {
         if (window.plug) {
@@ -1268,6 +1341,9 @@ export function App(): ReactElement {
       onUpsertMcpServer={upsertMcpServer}
       onDeleteMcpServer={deleteMcpServer}
       onCheckMcpHealth={checkMcpHealth}
+      onCheckForUpdates={checkForUpdates}
+      onDownloadUpdate={downloadUpdate}
+      onInstallUpdate={installUpdate}
     />
   );
   const commandPalette = (
@@ -1541,6 +1617,30 @@ function createStreamId(): string {
 
 function getSessionToolEvents(sessionSnapshot: SessionSnapshot): ToolStreamEvent[] {
   return sessionSnapshot.session.toolEvents.slice(0, 16);
+}
+
+function updateStatusMessage(snapshot: UpdateSnapshot): string {
+  if (snapshot.status === "available") {
+    return `Update available: ${snapshot.updateVersion ?? "latest"}.`;
+  }
+
+  if (snapshot.status === "not-available") {
+    return "Plug is up to date.";
+  }
+
+  if (snapshot.status === "downloaded") {
+    return "Update downloaded. Restart to install.";
+  }
+
+  if (snapshot.status === "downloading") {
+    return "Downloading update.";
+  }
+
+  if (snapshot.status === "checking") {
+    return "Checking for updates.";
+  }
+
+  return "Update status ready.";
 }
 
 function applyChatStreamEvent(state: BootstrapState, event: ChatStreamEvent): BootstrapState {

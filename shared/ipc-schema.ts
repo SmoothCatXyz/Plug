@@ -278,6 +278,28 @@ export const tokenSavingsSnapshotSchema = z.object({
   rtk: tokenSavingsRtkStatsSchema
 });
 
+export const updateDownloadProgressSchema = z.object({
+  percent: z.number().min(0),
+  bytesPerSecond: z.number().min(0),
+  transferred: z.number().min(0),
+  total: z.number().min(0)
+});
+
+export const updateSnapshotSchema = z.object({
+  status: z.enum(["idle", "checking", "available", "not-available", "downloading", "downloaded", "error"]),
+  currentVersion: z.string(),
+  updateVersion: z.string().nullable(),
+  releaseName: z.string().nullable(),
+  releaseDate: z.string().nullable(),
+  releaseNotes: z.string().nullable(),
+  error: z.string().nullable(),
+  downloaded: z.boolean(),
+  canCheck: z.boolean(),
+  canDownload: z.boolean(),
+  canInstall: z.boolean(),
+  progress: updateDownloadProgressSchema.nullable()
+});
+
 export const chatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant"]),
@@ -509,6 +531,24 @@ export const ipcSchemas = {
     request: z.object({}),
     response: tokenSavingsSnapshotSchema
   },
+  "update.getStatus": {
+    request: z.object({}),
+    response: updateSnapshotSchema
+  },
+  "update.check": {
+    request: z.object({}),
+    response: updateSnapshotSchema
+  },
+  "update.download": {
+    request: z.object({}),
+    response: updateSnapshotSchema
+  },
+  "update.install": {
+    request: z.object({}),
+    response: z.object({
+      ok: z.boolean()
+    })
+  },
   "session.list": {
     request: z.object({
       projectId: z.string().min(1)
@@ -625,4 +665,5 @@ export type PlugApi = {
   ): Promise<IpcResponse<TChannel>>;
   onChatEvent(listener: (event: import("./types").ChatStreamEvent) => void): () => void;
   onToolEvent(listener: (event: import("./types").ToolStreamEvent) => void): () => void;
+  onUpdateEvent(listener: (event: import("./types").UpdateSnapshot) => void): () => void;
 };

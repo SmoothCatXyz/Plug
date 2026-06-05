@@ -6,6 +6,7 @@ import { APP_NAME } from "../shared/types";
 import { registerIpcHandlers } from "./ipc";
 import { startRelayServer, stopRelayServer } from "./services/relay-service";
 import { ensurePluginsDir } from "./services/plugin-service";
+import { initializeUpdateService } from "./services/update-service";
 
 if (process.platform === "darwin") {
   app.commandLine.appendSwitch("use-mock-keychain");
@@ -162,6 +163,7 @@ function openSettingsWindow(): void {
 
 void app.whenReady().then(() => {
   registerIpcHandlers({ openSettingsWindow });
+  initializeUpdateService();
   startRelayServer();
   void ensurePluginsDir();
   applyDockIcon();

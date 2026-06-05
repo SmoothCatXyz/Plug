@@ -10,6 +10,7 @@ import { registerProjectIpc } from "./project";
 import { registerRelayIpc } from "./relay";
 import { registerSessionIpc } from "./session";
 import { registerTokenSavingsIpc } from "./token-savings";
+import { registerUpdateIpc } from "./update";
 import { registerWindowIpc } from "./window";
 import { registerWhisperIpc } from "./whisper";
 import { registerIpcHandler } from "./register";
@@ -35,6 +36,7 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions): void {
   registerPromptAppIpc();
   registerRelayIpc();
   registerTokenSavingsIpc();
+  registerUpdateIpc();
   registerWindowIpc(options);
   registerWhisperIpc();
 }

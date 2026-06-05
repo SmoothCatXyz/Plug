@@ -24,16 +24,6 @@ extraResources:
   - from: templates
     to: templates
 
-mac:
-  icon: build/icon.png
-  category: public.app-category.productivity
-  # Signing/notarization are decided at CI time: with certs the workflow signs
-  # and notarizes; without, it builds unsigned (CSC_IDENTITY_AUTO_DISCOVERY=false).
-  target:
-    - target: dmg
-      arch:
-        - arm64
-
 win:
   icon: build/icon.ico
   target:
@@ -45,3 +35,21 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+
+publish:
+  provider: github
+  owner: SmoothCatXyz
+  repo: Plug
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.productivity
+  # Signing/notarization are decided at CI time: with certs the workflow signs
+  # and notarizes; without, it builds unsigned (CSC_IDENTITY_AUTO_DISCOVERY=false).
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64

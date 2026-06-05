@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
-import type { ChatStreamEvent, ToolStreamEvent } from "../shared/types";
+import type { ChatStreamEvent, ToolStreamEvent, UpdateSnapshot } from "../shared/types";
 import type { IpcChannel, IpcRequest, IpcResponse, PlugApi } from "../shared/ipc-schema";
 
 const plugApi: PlugApi = {
@@ -30,6 +30,17 @@ const plugApi: PlugApi = {
 
     return () => {
       ipcRenderer.removeListener("tool.event", handler);
+    };
+  },
+  onUpdateEvent: (listener: (event: UpdateSnapshot) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, payload: UpdateSnapshot): void => {
+      listener(payload);
+    };
+
+    ipcRenderer.on("update.event", handler);
+
+    return () => {
+      ipcRenderer.removeListener("update.event", handler);
     };
   }
 };

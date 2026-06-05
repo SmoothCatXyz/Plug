@@ -30,10 +30,14 @@ jobs:
             artifacts: |
               dist/*.dmg
               dist/*.dmg.blockmap
+              dist/*.zip
+              dist/*.zip.blockmap
+              dist/latest-mac.yml
           - os: windows-latest
             artifacts: |
               dist/*.exe
               dist/*.exe.blockmap
+              dist/latest.yml
 
     runs-on: ${{ matrix.os }}
 
@@ -57,19 +61,29 @@ jobs:
       - name: Build app bundle
         run: npm run build
 
+      - name: Select publish mode
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "ELECTRON_BUILDER_PUBLISH=always" >> "$GITHUB_ENV"
+          else
+            echo "ELECTRON_BUILDER_PUBLISH=never" >> "$GITHUB_ENV"
+          fi
+
       - name: Package installer (macOS)
         if: runner.os == 'macOS'
         run: |
           if [ -n "${CSC_LINK}" ]; then
             if [ -n "${APPLE_ID}" ]; then NOTARIZE="-c.mac.notarize=true"; else NOTARIZE=""; fi
             echo "::notice::macOS — signing${APPLE_ID:+ + notarizing}"
-            npx electron-builder --mac --arm64 --publish never $NOTARIZE
+            npx electron-builder --mac --arm64 --publish "$ELECTRON_BUILDER_PUBLISH" $NOTARIZE
           else
             echo "::warning::macOS — no signing secrets, building UNSIGNED"
             unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
-            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64 --publish never
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64 --publish "$ELECTRON_BUILDER_PUBLISH"
           fi
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -80,8 +94,9 @@ jobs:
         if: runner.os == 'Windows'
         # electron-builder signs when CSC_LINK is provided and silently skips
         # signing when it is empty — no branching needed on Windows.
-        run: npx electron-builder --win --x64 --publish never
+        run: npx electron-builder --win --x64 --publish "$env:ELECTRON_BUILDER_PUBLISH"
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
@@ -91,11 +106,3 @@ jobs:
           name: plug-${{ runner.os }}-${{ github.ref_name }}
           path: ${{ matrix.artifacts }}
           if-no-files-found: error
-
-      - name: Attach installer to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: ${{ matrix.artifacts }}
-          fail_on_unmatched_files: false

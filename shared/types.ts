@@ -286,6 +286,37 @@ export type TokenSavingsSnapshot = {
   rtk: TokenSavingsRtkStats;
 };
 
+export type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "not-available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export type UpdateDownloadProgress = {
+  percent: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
+};
+
+export type UpdateSnapshot = {
+  status: UpdateStatus;
+  currentVersion: string;
+  updateVersion: string | null;
+  releaseName: string | null;
+  releaseDate: string | null;
+  releaseNotes: string | null;
+  error: string | null;
+  downloaded: boolean;
+  canCheck: boolean;
+  canDownload: boolean;
+  canInstall: boolean;
+  progress: UpdateDownloadProgress | null;
+};
+
 export type ChatRole = "user" | "assistant";
 
 export type ChatMessage = {

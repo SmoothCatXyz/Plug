@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
-    "dist:mac": "electron-builder --mac --arm64",
-    "dist:win": "electron-builder --win --x64"
+    "dist:mac": "electron-builder --mac --arm64 --publish never",
+    "dist:win": "electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
@@ -20,6 +20,7 @@
     "@milkdown/crepe": "^7.21.1",
     "@types/ws": "^8.18.1",
     "ai": "^6.0.191",
+    "electron-updater": "^6.6.8",
     "esbuild-wasm": "^0.28.0",
     "proxy-agent": "^8.0.1",
     "react": "^19.0.0",
