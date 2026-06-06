@@ -41,7 +41,8 @@ const ATOMIC = [
 // Curated Chinese aliases for headline frameworks, so users who name them (or
 // their canonical Chinese term) hit them precisely.
 const ALIASES = {
-  "user-journey-map": ["用户旅程", "旅程地图", "旅程"],
+  "user-story-map": ["用户故事地图", "故事地图", "故事地图", "用户故事", "需求梳理"],
+  "user-journey-map": ["用户旅程", "旅程地图", "旅程", "旅程图"],
   "empathy-map": ["同理心地图", "同理心"],
   jtbd: ["JTBD", "用户目标", "待办任务"],
   "kano-model": ["Kano", "需求分类"],
@@ -93,12 +94,13 @@ function skillBody(name, m) {
 这是「${name}」框架。当用户的诉求落在上面的场景时,【主动用它】分析当前项目的真实内容(不要泛泛复述框架定义,要结合项目具体落地):
 
 1. 按 ${name} 的标准结构,结合项目背景逐项填充,得出有依据的结论。
-2. 把分析结果用 write_document 写入 section=analysis(标题含框架名,带 summary/tags/status)。
-3. 选合适的可视化:
-   - 矩阵/对比类 → HTML 表格 或 2×2 矩阵(class="matrix-2x2");
-   - 画布类(商业/精益/价值主张)→ 九宫格(class="canvas-grid");
-   - 旅程/流程类 → 用户旅程(class="journey")或 Mermaid 流程图;
-   - 评分类(RICE/ICE 等)→ 评分表并算出总分、按分排序。
+2. 【务必】用 write_document 把结果写入 section=analysis(content 写 HTML,标题含框架名,带 summary/tags/status)——不要只在聊天里贴文本表格。
+3. 选合适的可视化组件(都是模板已配好样式的 HTML class):
+   - 用户故事地图 → class="story-map"(横向活动列 .sm-activity > .sm-activity__title + 若干 .sm-step / .sm-card);
+   - 用户旅程 → class="journey"(阶段为列,行=触点/情绪/痛点/机会);
+   - 矩阵/对比类 → 2×2 矩阵 class="matrix-2x2"(.m-cell/.m-label)或 HTML 表格;
+   - 画布类(商业/精益/价值主张)→ 九宫格 class="canvas-grid"(.canvas-block);
+   - 流程/状态 → Mermaid;评分类(RICE/ICE)→ 表格并算总分排序。
 4. 末尾给出【结论 + 下一步建议】(callout 标注关键决策)。
 
 除非用户明确点名其它方法,这个框架匹配场景时就直接用,不必反问。`;

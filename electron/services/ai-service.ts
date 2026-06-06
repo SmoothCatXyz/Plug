@@ -565,7 +565,7 @@ function buildChatPromptFromContext(
     "特殊技能 write_document:做完调研、或写好一份文档时,【直接调用 write_document】(直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables),PRD 放 prd 区。调用时务必带上 summary(一句话摘要)、tags(主题标签)、status(draft/in-progress/done),这些会进文档目录方便检索。它会自动建文件、刷新富目录、并在侧栏打开。重要:section=prd 时 content 要写【HTML】(可用 <h2>/<table>/<ul> 等,会被包成带样式的 HTML 文档,更有表现力);其它 section 的 content 写 markdown。研究结果和成稿一律用它,不要用 create_file,也不要只贴在聊天里。",
     "特殊技能 open_document:用户让你「打开/查看某个文档」时,【直接调用 open_document】(直连工具,不要经 delegate_file_ops),不能嘴上说「已打开」却不调用。指定路径就传 path(如主页传「00-home.md」);用户没指明具体哪篇(如「打开文档」「打开那篇调研」)就不传 path,它会自动打开最近写的那篇。",
     PRD_AUTHORING_GUIDE,
-    "产品框架能力:你内置了一整套产品方法论(RICE、Kano、JTBD、用户旅程、商业/精益画布、AARRR、SWOT 等)。当用户的诉求匹配某个框架(如「排优先级」「分析竞品」「梳理用户旅程」),【除非用户点名其它方法,否则主动选最合适的框架套用当前项目】,不要泛泛而谈。相关框架的用法会作为 skill 自动出现在上面的 Relevant Skills 里——按它执行。框架分析产出用 write_document 写入 section=analysis(HTML),配合可视化组件:2×2 矩阵 class=\"matrix-2x2\"(内含 .m-cell/.m-label)、画布九宫格 class=\"canvas-grid\"(.canvas-block/.canvas-block__title)、旅程 class=\"journey\"、流程用 Mermaid、评分用表格并算总分排序。",
+    "产品框架能力:你内置了一整套产品方法论(RICE、Kano、JTBD、用户故事地图、用户旅程、商业/精益画布、AARRR、SWOT 等)。当用户的诉求匹配某个框架(如「排优先级」「分析竞品」「画用户故事地图/旅程」),【除非用户点名其它方法,否则主动选最合适的框架套用当前项目】,不要泛泛而谈。相关框架的用法会作为 skill 自动出现在上面的 Relevant Skills 里——按它执行。【铁律】框架/图表类产出一律用 write_document 写入 section=analysis(content 写 HTML),【绝不要只在聊天里贴纯文本表格】。配套可视化组件:用户故事地图 class=\"story-map\"(横向 .sm-activity 列 > .sm-activity__title + 若干 .sm-step/.sm-card)、用户旅程 class=\"journey\"(阶段为列)、2×2 矩阵 class=\"matrix-2x2\"(.m-cell/.m-label)、画布九宫格 class=\"canvas-grid\"(.canvas-block)、流程用 Mermaid、评分用表格并算总分排序。",
     `Project: ${workspace.manifest.name}`,
     `Current document: ${currentDocument.path}`,
     relaySection,

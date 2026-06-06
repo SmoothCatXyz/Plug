@@ -183,6 +183,15 @@ body { margin: 0; background: var(--bg); color: var(--text);
 
 /* Framework: user journey (wide, scrollable) */
 .journey { overflow-x: auto; }
+.journey table { min-width: 640px; }
+
+/* Framework: user story map — horizontal activity columns with stacked cards */
+.story-map { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; margin: 18px 0; }
+.sm-activity { flex: 0 0 200px; display: flex; flex-direction: column; gap: 8px; }
+.sm-activity__title { font-weight: 700; color: var(--accent); padding: 8px 10px; border-bottom: 2px solid var(--accent); margin-bottom: 2px; }
+.sm-step { font-size: 12px; font-weight: 600; color: var(--muted); padding: 2px 0; letter-spacing: 0.02em; }
+.sm-card { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 13px; line-height: 1.5; }
+.sm-release { font-size: 11px; color: var(--muted); margin: 6px 0; padding-left: 2px; border-left: 2px solid var(--line); }
 `;
 
 // No template-literal interpolation / backticks inside this string.
@@ -197,6 +206,13 @@ const PRD_SCRIPT = `
       var li = document.createElement('li');
       li.className = 'prd-toc__' + h.tagName.toLowerCase();
       var a = document.createElement('a'); a.href = '#' + id; a.textContent = (h.textContent || '').trim();
+      a.addEventListener('click', function(e){
+        // In a srcdoc/sandboxed iframe a native #anchor navigates to a blank
+        // page, so scroll programmatically instead.
+        e.preventDefault();
+        var target = document.getElementById(id);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       li.appendChild(a); toc.appendChild(li);
     });
   } else { var nav = document.getElementById('prd-toc'); if (nav) nav.style.display = 'none'; }
