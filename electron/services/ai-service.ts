@@ -32,6 +32,13 @@ import { readProjectManifest } from "../tools/project-files";
 import { resolveDocumentOpenIntent } from "./document-intent";
 import { PRD_AUTHORING_GUIDE } from "../tools/prd-template";
 import {
+  buildOperationLedger,
+  findDocumentOperationToReveal,
+  hasGroundedFileWriteOutcome,
+  latestFileOperationFailure,
+  type OperationRecord
+} from "./operation-ledger";
+import {
   lowReasoningOptions,
   minimalReasoningOptions,
   toLanguageModel as toModel,
@@ -372,7 +379,8 @@ export async function streamChatResponse(
     // tool-grounded confirmation (single-purpose, minimal-context generation, so
     // there's nothing to pad with). Otherwise the model's composed text is the
     // deliverable; surface the buffered text as-is.
-    const actionSummaries = collectActionSummaries(recordedToolEvents);
+    const operations = buildOperationLedger(recordedToolEvents);
+    const actionSummaries = collectActionSummaries(operations);
     if (actionSummaries.length === 1 && SELF_DESCRIBING_TOOLS.has(actionSummaries[0].toolName)) {
       // Sole action by a self-describing tool: its summary IS the reply — skip
       // the confirmation model call entirely (saves a full round-trip on the
@@ -391,6 +399,10 @@ export async function streamChatResponse(
         emit
       });
       endConfirm(`${content.length} chars`);
+    } else if (isFileWriteRequest(input.content) && !hasGroundedFileWriteOutcome(operations)) {
+      content = renderUnverifiedFileWriteMessage(input.agentMode, operations);
+      turn.log("file-write guard replaced ungrounded assistant text");
+      emit({ streamId: input.streamId, type: "delta", messageId: assistantMessage.id, delta: content });
     } else if (content) {
       emit({ streamId: input.streamId, type: "delta", messageId: assistantMessage.id, delta: content });
     }
@@ -416,7 +428,7 @@ export async function streamChatResponse(
 
     // If this turn wrote or opened a document, reveal it in the side panel.
     // Freshly written docs also get indexed (section _index.md + home page).
-    const documentToOpen = findDocumentToReveal(recordedToolEvents);
+    const documentToOpen = findDocumentOperationToReveal(operations);
     if (documentToOpen) {
       if (documentToOpen.index) {
         try {
@@ -557,12 +569,13 @@ function buildChatPromptFromContext(
     PLUG_PERSONA,
     `当前时间:${timeStr}。`,
     agentMode === "plan"
-      ? "当前模式:Plan。用户想一起理思路。把你的判断和具体步骤讲清楚,但不要调用任何 agent 或工具。如果只是闲聊或拿主意,就正常聊,别硬套规划。"
+      ? "当前模式:Plan。用户想一起理思路。把你的判断和具体步骤讲清楚,但不要调用任何 agent 或工具。如果用户要求创建、保存、修改、打开文件或执行任何会改变项目的动作,必须明确说当前还没有落盘,需要切到 Execute/Auto 才能真正执行;绝不能说已经创建/写入/保存。"
       : agentMode === "execute"
         ? "当前模式:Execute。这通常意味着有具体的活儿要干——用你的专职 agent(delegate_research、delegate_file_ops、delegate_memory、delegate_browser)把任务从头做到尾。但先看清这句话是不是真需要动工具:如果只是聊天或拿主意,就直接以搭档身份回应,别为了用工具而用工具。"
         : "当前模式:Auto。先判断这句话到底需不需要动工具或调研:需要,就直接委派 specialist 把它办完,不啰嗦;如果只是聊天、征求意见、个人决定,就直接以搭档身份回一句,别套任务流程、别铺方案菜单。",
     "完成任务后怎么回复:就用一句话确认结果(例:用户说「打开百度网页」,你做完只回「已打开百度首页」)。不要罗列 URL、标题、文件路径这些执行细节;不要主动追问「要不要做下一步/要不要发截图」——用户想要更多,自己会问。只有当任务本身就是要产出一段内容(比如「写一段文案」),才把那段内容给出来。",
-    "特殊技能 write_document:做完调研、或写好一份文档时,【直接调用 write_document】(直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables),PRD 放 prd 区。调用时务必带上 summary(一句话摘要)、tags(主题标签)、status(draft/in-progress/done),这些会进文档目录方便检索。它会自动建文件、刷新富目录、并在侧栏打开。重要:section=prd 时 content 要写【HTML】(可用 <h2>/<table>/<ul> 等,会被包成带样式的 HTML 文档,更有表现力);其它 section 的 content 写 markdown。研究结果和成稿一律用它,不要用 create_file,也不要只贴在聊天里。",
+    "文件写入铁律:只有文件工具返回 success 或 pending_approval 后,才能说已创建/已写入/等待审批。用户指定具体路径、文件名、扩展名或结构化文件(如 .json/.yaml/.csv/.txt/代码/配置)时,【直接调用 create_file】,path 用用户要的相对路径,content 写原始文件内容,绝不能擅自改成 Markdown 或改扩展名。",
+    "特殊技能 write_document:只用于人类阅读的调研、报告、PRD、分析文章。做完调研、或写好一份文档时,【直接调用 write_document】(直连工具,不要经 delegate_file_ops)把成果写进项目——调研结论放知识区(section=knowledge),成稿/交付物放交付物区(section=deliverables),PRD 放 prd 区。调用时务必带上 summary(一句话摘要)、tags(主题标签)、status(draft/in-progress/done),这些会进文档目录方便检索。重要:write_document 不能用于 JSON/配置/代码/数据文件,也不能把 JSON 包进 Markdown;section=prd 时 content 写 HTML,其它文档 content 写 markdown。",
     "特殊技能 open_document:用户让你「打开/查看某个文档」时,【直接调用 open_document】(直连工具,不要经 delegate_file_ops),不能嘴上说「已打开」却不调用。指定路径就传 path(如主页传「00-home.md」);用户没指明具体哪篇(如「打开文档」「打开那篇调研」)就不传 path,它会自动打开最近写的那篇。",
     PRD_AUTHORING_GUIDE,
     "产品框架能力:你内置了一整套产品方法论(RICE、Kano、JTBD、用户故事地图、用户旅程、商业/精益画布、AARRR、SWOT 等)。当用户的诉求匹配某个框架(如「排优先级」「分析竞品」「画用户故事地图/旅程」),【除非用户点名其它方法,否则主动选最合适的框架套用当前项目】,不要泛泛而谈。相关框架的用法会作为 skill 自动出现在上面的 Relevant Skills 里——按它执行。【铁律】框架/图表类产出一律用 write_document 写入 section=analysis(content 写 HTML),【绝不要只在聊天里贴纯文本表格】。配套可视化组件:用户故事地图 class=\"story-map\"(横向 .sm-activity 列 > .sm-activity__title + 若干 .sm-step/.sm-card)、用户旅程 class=\"journey\"(阶段为列)、2×2 矩阵 class=\"matrix-2x2\"(.m-cell/.m-label)、画布九宫格 class=\"canvas-grid\"(.canvas-block)、流程用 Mermaid、评分用表格并算总分排序。",
@@ -943,6 +956,28 @@ function renderProviderFailureMessage(providerLabel: string, modelId: string, er
   ].join("\n");
 }
 
+function isFileWriteRequest(value: string): boolean {
+  const text = value.trim();
+  const hasWriteVerb = /(创建|新建|写入|写一?个|生成|保存|落盘|create|write|generate|save)/i.test(text);
+  const hasFileTarget = /(文件|文档|json|JSON|\.[a-zA-Z0-9]{1,8}\b)/.test(text);
+
+  return hasWriteVerb && hasFileTarget;
+}
+
+function renderUnverifiedFileWriteMessage(agentMode: AgentMode, operations: OperationRecord[]): string {
+  const fileToolError = latestFileOperationFailure(operations);
+
+  if (fileToolError?.message) {
+    return `我没有创建成功：${fileToolError.message}`;
+  }
+
+  if (agentMode === "plan") {
+    return "这一步还没有真正落盘。当前是 Plan 模式，不能创建或保存文件；切到 Execute 或 Auto 后我会用 create_file 写入你要的文件。";
+  }
+
+  return "我没有拿到文件写入工具的成功结果，所以不能说文件已经创建。请把目标路径和内容再发一次，我会用 create_file 真正落盘。";
+}
+
 function renderLoadedSkills(skills: LoadedSkill[]): string {
   if (!skills.length) {
     return "";
@@ -1020,16 +1055,29 @@ const SELF_DESCRIBING_TOOLS = new Set(["open_document", "write_document"]);
 
 // Side-effecting actions completed this turn (chronological, de-duplicated).
 // Empty when the turn was synthesis/Q&A rather than an action.
-function collectActionSummaries(events: ToolStreamEvent[]): Array<{ toolName: string; message: string }> {
+function collectActionSummaries(operations: OperationRecord[]): Array<{ toolName: string; message: string }> {
   const seen = new Set<string>();
   const summaries: Array<{ toolName: string; message: string }> = [];
-  for (const event of [...events].reverse()) {
-    if (event.phase === "success" && isActionTool(event.toolName) && event.message && !seen.has(event.message)) {
-      seen.add(event.message);
-      summaries.push({ toolName: event.toolName, message: event.message });
+  for (const operation of [...operations].reverse()) {
+    const isGroundedOutcome =
+      operation.status === "pending_approval" || (operation.status === "success" && (!isFileMutationOperation(operation) || operation.verified));
+
+    if (isGroundedOutcome && isActionTool(operation.toolName) && operation.message && !seen.has(operation.message)) {
+      seen.add(operation.message);
+      summaries.push({ toolName: operation.toolName, message: operation.message });
     }
   }
   return summaries;
+}
+
+function isFileMutationOperation(operation: OperationRecord): boolean {
+  return (
+    operation.action === "create_file" ||
+    operation.action === "edit_file" ||
+    operation.action === "delete_file" ||
+    operation.action === "move_file" ||
+    operation.action === "write_document"
+  );
 }
 
 // Resolve a plain "open <doc>" command to a target without a model call. Reads
@@ -1058,21 +1106,6 @@ async function resolveFastDocumentOpen(
 // purpose: reveal must not depend on the model choosing a particular tool.
 // `index` is true only for freshly-written docs (those need their section index
 // + home link refreshed); opening an existing doc just reveals it.
-function findDocumentToReveal(events: ToolStreamEvent[]): { path: string; index: boolean } | null {
-  for (const event of events) {
-    if (event.phase !== "success") continue;
-    const isWrite = event.toolName === "write_document" || event.toolName === "create_file";
-    const isOpen = event.toolName === "open_document";
-    if (!isWrite && !isOpen) continue;
-    const output = (event.details as { output?: { documentPath?: unknown; path?: unknown } } | undefined)?.output;
-    const path = output?.documentPath ?? output?.path;
-    if (typeof path === "string" && (path.endsWith(".md") || /\.html?$/i.test(path))) {
-      return { path, index: isWrite };
-    }
-  }
-  return null;
-}
-
 // Bounded, tool-grounded confirmation for an action task. The model is given
 // ONLY the request and the tool summaries (no project context, no tools), so it
 // has nothing to pad with — that's what keeps it short. Warmth (B) lives inside
@@ -1094,7 +1127,8 @@ async function streamActionConfirmation(input: {
     system: withPersona(
       [
         "你刚替用户完成了一个动作类任务,现在只需要确认结果。",
-        "用一两句话、像搭档一样自然地说一声完成了,依据下面的执行结果。",
+        "用一两句话、像搭档一样自然地确认,依据下面的执行结果。",
+        "如果执行结果是 pending approval/等待审批,只能说已生成提案或等待审批,不能说文件已经写入。",
         "不要罗列 URL、标题、文件路径这些细节(界面已经显示了),不要追问要不要做下一步,不要用列表。",
         "例:用户说「打开百度网页」、执行结果是导航成功 → 你只回类似「好了,百度首页给你打开了」。"
       ].join("\n")

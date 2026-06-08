@@ -43,7 +43,7 @@ export const writeDocumentTool: AgentTool<WriteDocumentInput> = {
   name: "write_document",
   label: "Write Document",
   description:
-    "Write a research note or document directly into a project folder section (e.g. knowledge or deliverables). Creates the file, refreshes the section index and project home, and opens it in the side panel. Use this for research findings and drafted documents instead of create_file.",
+    "Write a human-readable Markdown/HTML research note or document directly into a project folder section (e.g. knowledge or deliverables). Creates the file, refreshes the section index and project home, and opens it in the side panel. Do not use for structured data files, JSON/config/code files, or explicit file-extension requests; use create_file for those.",
   category: "file",
   aiWriteLevel: "auto",
   parameters: writeDocumentInputSchema,
@@ -71,6 +71,8 @@ export const writeDocumentTool: AgentTool<WriteDocumentInput> = {
     if (section.aiWrite === "readonly") {
       throw new Error(`AI writes are disabled for section: ${section.id}`);
     }
+
+    assertDocumentWriteInput(input);
 
     const title = input.title.trim();
     const ext = sectionDocExtension(section); // ".html" for prd, ".md" otherwise
@@ -105,7 +107,8 @@ export const writeDocumentTool: AgentTool<WriteDocumentInput> = {
         documentPath: writtenPath,
         title: input.title.trim(),
         section: section.id,
-        openInPanel: true
+        openInPanel: true,
+        verified: true
       }
     };
   }
@@ -140,4 +143,64 @@ async function uniqueSlug(projectRoot: string, sectionBase: string, raw: string,
     }
   }
   return `${base}-${Date.now()}`;
+}
+
+const STRUCTURED_FILE_EXTENSIONS = new Set([
+  ".json",
+  ".jsonl",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".csv",
+  ".tsv",
+  ".xml",
+  ".ini",
+  ".env",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".css",
+  ".scss",
+  ".sh"
+]);
+
+function assertDocumentWriteInput(input: WriteDocumentInput): void {
+  const namedExt = getExplicitExtension(input.slug) ?? getExplicitExtension(input.title);
+
+  if (namedExt && STRUCTURED_FILE_EXTENSIONS.has(namedExt)) {
+    throw new Error(
+      `write_document cannot create ${namedExt} files. Use create_file with an explicit project-relative path and raw file content.`
+    );
+  }
+
+  if (looksLikeRawJson(input.content)) {
+    throw new Error("write_document cannot wrap raw JSON as Markdown. Use create_file to create the requested .json file.");
+  }
+}
+
+function getExplicitExtension(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = trimmed.match(/(\.[a-zA-Z0-9]+)$/);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function looksLikeRawJson(value: string): boolean {
+  const trimmed = value.trim();
+
+  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
+    return false;
+  }
+
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
 }

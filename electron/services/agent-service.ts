@@ -1,4 +1,4 @@
-import { mkdir, rename, unlink } from "node:fs/promises";
+import { mkdir, rename, stat, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { spawn } from "node:child_process";
 import type {
@@ -80,7 +80,7 @@ export async function invokeAgentTool(options: {
         pendingApprovals.set(mcpResult.pendingApproval.id, mcpResult.pendingApproval);
       }
       console.log(
-        `[tool] ${mcpResult.pendingApproval ? "⏸" : "✓"} ${options.name} (${Date.now() - started}ms) ${mcpResult.summary ?? ""}`
+        `[tool] ${formatToolStatus(mcpResult)} ${options.name} (${Date.now() - started}ms) ${mcpResult.summary ?? ""}`
       );
       return mcpResult;
     }
@@ -99,7 +99,7 @@ export async function invokeAgentTool(options: {
     }
 
     console.log(
-      `[tool] ${result.pendingApproval ? "⏸" : "✓"} ${options.name} (${Date.now() - started}ms) ${result.summary ?? ""}`
+      `[tool] ${formatToolStatus(result)} ${options.name} (${Date.now() - started}ms) ${result.summary ?? ""}`
     );
     return result;
   } catch (error) {
@@ -119,6 +119,14 @@ function formatToolInput(input: unknown): string {
   } catch {
     return "[unserializable input]";
   }
+}
+
+function formatToolStatus(result: ToolInvocationResult): string {
+  if (result.status === "error") {
+    return "✗";
+  }
+
+  return result.pendingApproval ? "⏸" : "✓";
 }
 
 export async function listPendingToolApprovals(projectId: string): Promise<PendingToolApproval[]> {
@@ -261,8 +269,15 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
 
   if (preview.action === "create") {
     const path = await assertProjectFileMissing(projectRoot, preview.path);
+    const appliedPath = await writeProjectTextFile(projectRoot, path, preview.content);
     return {
-      appliedPath: await writeProjectTextFile(projectRoot, path, preview.content)
+      appliedPath,
+      output: {
+        action: "create",
+        path: appliedPath,
+        bytes: Buffer.byteLength(preview.content, "utf8"),
+        verified: true
+      }
     };
   }
 
@@ -273,8 +288,16 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
       throw new Error(`File changed since approval was created: ${current.path}`);
     }
 
+    const appliedPath = await writeProjectTextFile(projectRoot, current.path, preview.newContent);
     return {
-      appliedPath: await writeProjectTextFile(projectRoot, current.path, preview.newContent)
+      appliedPath,
+      output: {
+        action: "edit",
+        path: appliedPath,
+        oldLength: current.content.length,
+        newLength: preview.newContent.length,
+        verified: true
+      }
     };
   }
 
@@ -283,7 +306,19 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
     const toAbsolute = safeProjectPath(projectRoot, preview.toPath);
     await mkdir(dirname(toAbsolute), { recursive: true });
     await rename(fromAbsolute, toAbsolute);
-    return { appliedPath: preview.toPath };
+    const movedStats = await stat(toAbsolute);
+    if (!movedStats.isFile() && !movedStats.isDirectory()) {
+      throw new Error(`Move verification failed: ${preview.toPath}`);
+    }
+    return {
+      appliedPath: preview.toPath,
+      output: {
+        action: "move",
+        fromPath: preview.fromPath,
+        path: preview.toPath,
+        verified: true
+      }
+    };
   }
 
   if (preview.action === "command") {
@@ -305,7 +340,12 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
     }
 
     return {
-      appliedPath: await applyCommandApproval(projectRoot, preview.cmd, preview.cwd)
+      appliedPath: await applyCommandApproval(projectRoot, preview.cmd, preview.cwd),
+      output: {
+        action: "command",
+        path: ".plug/last-command-output.txt",
+        verified: true
+      }
     };
   }
 
@@ -320,9 +360,29 @@ async function applyApprovalPreview(projectRoot: string, approval: PendingToolAp
   }
 
   await unlink(safeProjectPath(projectRoot, current.path));
+  await verifyProjectFileDeleted(projectRoot, current.path);
   return {
-    appliedPath: current.path
+    appliedPath: current.path,
+    output: {
+      action: "delete",
+      path: current.path,
+      verified: true
+    }
   };
+}
+
+async function verifyProjectFileDeleted(projectRoot: string, path: string): Promise<void> {
+  try {
+    await stat(safeProjectPath(projectRoot, path));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return;
+    }
+
+    throw error;
+  }
+
+  throw new Error(`Delete verification failed: ${path}`);
 }
 
 async function applyCommandApproval(projectRoot: string, cmd: string, cwd: string): Promise<string> {

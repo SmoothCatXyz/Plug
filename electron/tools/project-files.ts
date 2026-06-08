@@ -34,6 +34,12 @@ export async function writeProjectTextFile(
   const safePath = safeProjectPath(projectRoot, unsafeRelativePath);
   await mkdir(dirname(safePath), { recursive: true });
   await writeFile(safePath, content, "utf8");
+  const persisted = await readFile(safePath, "utf8");
+
+  if (persisted !== content) {
+    throw new Error(`Project file write verification failed: ${unsafeRelativePath}`);
+  }
+
   return normalizeRelativePath(projectRoot, safePath);
 }
 

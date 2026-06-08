@@ -68,7 +68,8 @@ export const proposeEditTool: AgentTool<ProposeEditInput> = {
         action: "edit",
         path,
         oldLength: existing.content.length,
-        newLength: input.newContent.length
+        newLength: input.newContent.length,
+        verified: true
       }
     };
   }

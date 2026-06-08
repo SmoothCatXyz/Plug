@@ -66,7 +66,8 @@ export const createFileTool: AgentTool<CreateFileInput> = {
       output: {
         action: "create",
         path: writtenPath,
-        bytes: Buffer.byteLength(input.content, "utf8")
+        bytes: Buffer.byteLength(input.content, "utf8"),
+        verified: true
       }
     };
   }

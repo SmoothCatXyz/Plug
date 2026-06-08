@@ -13,6 +13,7 @@ import {
 import { withPersona } from "./persona";
 import { openDocumentTool } from "../tools/open-document";
 import { writeDocumentTool } from "../tools/write-document";
+import { createFileTool } from "../tools/create-file";
 
 type ProviderSecret = Awaited<ReturnType<typeof resolveToolProviderSecret>>;
 
@@ -35,7 +36,7 @@ type CreateOrchestratorToolsInput = SpecialistInput;
 const SPECIALIST_PROMPTS: Record<string, string> = {
   research:
     "这次你负责网页调研:用网页工具完成被指派的调研任务,返回清晰、有结构的小结。",
-  file: "这次你负责文件操作:准确完成被指派的文件任务,汇报读取、写入或查找到了什么。要写一份调研或文档时,优先用 write_document(section 选 knowledge 或 deliverables),它会直接落盘、刷新索引并在侧栏打开;不要用 create_file 走审批。",
+  file: "这次你负责文件操作:准确完成被指派的文件任务,汇报读取、写入或查找到了什么。用户指定具体路径/文件名/扩展名时,尤其是 .json/.yaml/.csv/.txt/代码/配置文件,必须用 create_file 写入原始内容,不能改成 Markdown。只有写人类阅读的调研或文档时才优先用 write_document(section 选 knowledge 或 deliverables),它会直接落盘、刷新索引并在侧栏打开。",
   memory:
     "这次你负责项目记忆:按指示检索或更新项目记忆,汇报找到或保存了什么。",
   browser:
@@ -291,6 +292,7 @@ export async function createOrchestratorTools(input: CreateOrchestratorToolsInpu
     // Direct single-step skills — called by the orchestrator itself, NOT routed
     // through a specialist sub-agent. Delegating these adds a whole extra model
     // round-trip (~15s) for what is a single instant action, so they live here.
+    create_file: directOrchestratorTool(createFileTool, input),
     write_document: directOrchestratorTool(writeDocumentTool, input),
     open_document: directOrchestratorTool(openDocumentTool, input)
   };
@@ -319,7 +321,15 @@ function directOrchestratorTool(
         toolName: result.toolName,
         durationMs: result.durationMs,
         summary: result.summary,
-        error: result.error
+        error: result.error,
+        pendingApproval: result.pendingApproval
+          ? {
+              id: result.pendingApproval.id,
+              title: result.pendingApproval.title,
+              reason: result.pendingApproval.reason
+            }
+          : undefined,
+        output: clipForModel(result.output)
       };
     }
   });
