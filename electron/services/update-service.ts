@@ -1,7 +1,10 @@
+import { createRequire } from "node:module";
 import { app, BrowserWindow } from "electron";
-import { autoUpdater } from "electron-updater";
-import type { ProgressInfo, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import type { AppUpdater, ProgressInfo, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
 import type { UpdateSnapshot, UpdateStatus } from "../../shared/types";
+
+const require = createRequire(import.meta.url);
+const { autoUpdater } = require("electron-updater") as { autoUpdater: AppUpdater };
 
 let initialized = false;
 let snapshot: UpdateSnapshot = buildSnapshot({ status: "idle" });
